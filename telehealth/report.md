@@ -8,7 +8,7 @@
 - Build pass: **4/4** · Trigger: **4/4** · Variant: **4/4**
 - Feature completeness (avg): **89.2%** · Ease (avg): **3.8/5**
 - Hallucinations: **0** · docs-escapes: **7** · retries: **7**
-- Findings by tag: {'skills': 17, 'docs-mcp': 2, 'agent': 4, 'SDK': 4}
+- Findings by tag: {'skills': 17, 'docs-mcp': 2, 'agent': 5, 'SDK': 4}
 
 ## Per-platform
 
@@ -36,6 +36,7 @@
 - **[skills]** (web) Incoming-call popup (CometChatIncomingCall) renders at bottom-left instead of a standard centered overlay — no placement/positioning recipe in the calls skill for mounting the incoming-call component.
 - **[skills]** (web) Ongoing call renders as a floating overlay covering only the top half of the screen with a broken bottom half — the call surface lacks a full-viewport container; react-calls 'call container dimensions' guidance didn't yield a correct full-screen layout.
 - **[skills]** (web) After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area — the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.
+- **[agent]** (web) X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code — no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init — just mount CometChatIncomingCall' — that assumption is EMPIRICALLY WRONG; the call never connects.
 - **[skills]** (android) Calls skill rule 1.8 documents `CometChatIncomingCall(modifier = ...)` with no `call` argument, which does not compile ('No value passed for parameter call'). The correct usage (a required `call =` driven by CometChat.addCallListener → StateFlow<Call?>) only appears in the compose-placement skill §7, so the two skills contradict each other.
 - **[skills]** (android) The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` — the agent only found it by inspecting the resolved AAR after a compile error.
 - **[skills]** (android) The core skill gives a conflicting Kotlin floor (≥2.1.0 vs ≥2.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.
@@ -65,6 +66,7 @@
 - **[skills]** (web) Add a copy-paste scrollable message-list recipe to cometchat-react-patterns (flex column; message list flex:1 + min-height:0 + overflow-y:auto; header/composer pinned), verified to actually scroll.
 - **[skills]** (web) Add an incoming-call placement recipe to cometchat-react-calls: where to mount <CometChatIncomingCall/> and the fixed-overlay CSS so it appears as a standard centered banner, not bottom-left.
 - **[skills]** (web) Add a first-class full-screen ongoing-call layout recipe (full-viewport container/modal) to cometchat-react-calls so the call surface fills the screen instead of a partial-height overlay.
+- **[skills]** (web) cometchat-react-calls must correct the 'additive/ringing mode needs no init' guidance: document that calls to actually CONNECT require CometChatCalls.init() after login AND a mounted ongoing-call session host (CometChatOngoingCall or the kit's call manager wired to the CallListener) — mounting only CometChatIncomingCall gives ringing that never connects. Add a 2-client connect test to the skill.
 - **[skills]** (android) Fix calls skill rule 1.8 so the `CometChatIncomingCall` example includes the required `call =` parameter and shows the CometChat.addCallListener → StateFlow<Call?> driving pattern, aligning it with compose-placement §7 (or cross-reference it).
 - **[skills]** (android) Document the fully-qualified `com.cometchat.chat.core.Call` type in the call-listener snippets instead of implying `com.cometchat.chat.models.*`.
 - **[skills]** (android) Replace the conflicting Kotlin floor guidance in the core skill with a single correct minimum (≥2.2.0 for 6.0.x GA), noting the 'incompatible metadata version' failure below it.

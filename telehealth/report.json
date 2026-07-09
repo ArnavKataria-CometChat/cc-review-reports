@@ -40,7 +40,7 @@
   "blocker_tags": {
     "skills": 17,
     "docs-mcp": 2,
-    "agent": 4,
+    "agent": 5,
     "SDK": 4
   },
   "blockers": [
@@ -106,6 +106,13 @@
       "tag": "skills",
       "source": "human-checkpoint-runtime",
       "severity": "medium"
+    },
+    {
+      "component": "web",
+      "issue": "X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code \u2014 no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init \u2014 just mount CometChatIncomingCall' \u2014 that assumption is EMPIRICALLY WRONG; the call never connects.",
+      "tag": "agent",
+      "source": "human-checkpoint-runtime",
+      "severity": "critical"
     },
     {
       "component": "android",
@@ -262,6 +269,12 @@
       "component": "web",
       "suggestion": "Add a first-class full-screen ongoing-call layout recipe (full-viewport container/modal) to cometchat-react-calls so the call surface fills the screen instead of a partial-height overlay.",
       "motivated_by": "In-call overlay only covers top half (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "cometchat-react-calls must correct the 'additive/ringing mode needs no init' guidance: document that calls to actually CONNECT require CometChatCalls.init() after login AND a mounted ongoing-call session host (CometChatOngoingCall or the kit's call manager wired to the CallListener) \u2014 mounting only CometChatIncomingCall gives ringing that never connects. Add a 2-client connect test to the skill.",
+      "motivated_by": "Web (and cross-platform) calls ring but never connect: no CometChatCalls.init + only IncomingCall mounted (2-client verified).",
       "target": "skills"
     },
     {
