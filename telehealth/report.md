@@ -8,7 +8,7 @@
 - Build pass: **4/4** · Trigger: **4/4** · Variant: **4/4**
 - Feature completeness (avg): **89.2%** · Ease (avg): **3.8/5**
 - Hallucinations: **0** · docs-escapes: **7** · retries: **7**
-- Findings by tag: {'skills': 14, 'docs-mcp': 2, 'agent': 3, 'SDK': 1}
+- Findings by tag: {'skills': 16, 'docs-mcp': 2, 'agent': 4, 'SDK': 2}
 
 ## Per-platform
 
@@ -45,6 +45,10 @@
 - **[skills]** (ios) Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call — the agent had to code to the resolved .swiftinterface instead of the skill.
 - **[docs-mcp]** (ios) The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.
 - **[agent]** (ios) The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff — only their call sites and Pods build wiring appear — so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.
+- **[SDK]** (ios) CometChatWebRTC's pod xcconfig sets EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64, which propagates to Pods-Telehealth and forces the whole app to build x86_64-only for the simulator. This breaks install/run on Apple Silicon simulators (arch mismatch) even though WebRTC.xcframework SHIPS the ios-arm64_x86_64-simulator slice. Passes the xcodebuild build gate (x86_64), fails only at install/run — a build-pass != runtime gap.
+- **[agent]** (ios) iOS Consult Room is stuck in an infinite re-render/task loop: the SwiftUI ConsultRoomLiveView fires GET /api/cometchat/appointments/:id/chat thousands of times (each cancelled, -999) and never reaches the .ready phase, so the 'Open Secure Chat' button + call bar NEVER render and CometChat never initializes (no connect()/login). The chat/calling is effectively non-functional at runtime and also storms the backend. Build gate (xcodebuild) passes; only running it reveals this.
+- **[skills]** (ios) SKILLS ROUTING: the cometchat-ios dispatcher under-triggered — the iOS run loaded ONLY 'cometchat-ios' (the dispatcher), not 'cometchat-ios-core' (which owns 'initialization, login, provider pattern, anti-patterns') nor any SwiftUI sub-skill. (Android by contrast loaded 6 family skills.) So the agent wrote the consult room with no foundational SwiftUI guidance in context — the root enabler of the re-render loop.
+- **[skills]** (ios) SKILLS COVERAGE: even cometchat-ios-core's anti-patterns (§8) are UIKit-centric (init once, singleton manager, retain cycles) and do NOT cover the SwiftUI view-lifecycle pitfall that caused this bug — wrapping the shared manager in @StateObject and driving connect()/access-fetch from a .task that re-fires. No 'observe the shared manager via @EnvironmentObject, key .task on a stable id, run connect() once' guidance exists.
 
 ## Prioritized improvement suggestions
 
@@ -68,6 +72,8 @@
 - **[skills]** (ios) Correct cometchat-ios-calls to state that CometChatCallsSDK and CometChatWebRTC must be added explicitly for the CocoaPods integration (they are not transitively vendored by the UIKit pod).
 - **[docs-mcp]** (ios) Update the login/logout and calling API prose in cometchat-ios-core/cometchat-ios-calls to match the real .swiftinterface: ApiStatus enum results for login/logout, Result<Bool,Error> init closure, and CometChatCallButtons property-based .user/.controller + init(width:height:) + .connect().
 - **[docs-mcp]** (ios) Add docs-mcp coverage for the node/express backend CometChat auth-token flow (provision/sync user with role, mint short-lived auth token, return App ID/Region as non-secret bootstrap), since the plugin is frontend-only and this flow has no skill.
+- **[skills]** (ios) cometchat-ios should (a) note that CometChatWebRTC's podspec excludes arm64 for iphonesimulator and (b) ship a Podfile post_install snippet clearing EXCLUDED_ARCHS on CometChat pods, so calling-enabled apps run on Apple Silicon simulators. Ideally the WebRTC podspec drops the exclusion since the xcframework now includes the arm64-sim slice.
+- **[skills]** (ios) cometchat-ios should provide a stable SwiftUI consult-room pattern that runs access-fetch + CometChat connect() exactly once (e.g. .task(id:) keyed only on the stable appointment id, guarding against @StateObject/@EnvironmentObject churn that retriggers the task), so the ready state is reached and the chat/call UI renders without a request storm.
 
 ## docs-mcp coverage gaps
 
