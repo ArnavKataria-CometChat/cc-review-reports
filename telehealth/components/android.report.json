@@ -95,6 +95,12 @@
         "source": "human-checkpoint-runtime",
         "severity": "high",
         "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
+      },
+      {
+        "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
+        "tag": "agent",
+        "source": "human-checkpoint-runtime",
+        "severity": "critical"
       }
     ],
     "improvement_suggestions": [
@@ -127,12 +133,17 @@
         "suggestion": "cometchat-android-v6-calls + cometchat-android-v6-compose-placement should show the exact Compose wiring to surface voice/video call buttons in the message header/consult screen, so 'calling in scope' yields a usable call entry point (not just a chat).",
         "motivated_by": "Android chat has no calling option despite calling in scope (human-verified runtime).",
         "target": "skills"
+      },
+      {
+        "suggestion": "cometchat-android-v6-calls must require CometChatCalls.init(CallAppSettingsBuilder{appId,region}) after login AND show the full connect flow: host the ongoing/connecting call session UI and clear it on end/cancel/reject. Mounting only the incoming-call overlay + a listener that tracks a flag gives calls that ring/connect-forever but never establish.",
+        "motivated_by": "Android calls stuck on 'connecting'; Calls SDK never initialized; cancel doesn't dismiss (human-verified runtime).",
+        "target": "skills"
       }
     ]
   },
   "_meta": {
     "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **CometChat skill variants relied on:** `cometchat` dispatcher \u2192 `cometchat-android-v6-core`, `-compose-components`, `-compose-theming`, `-compose-placement`, and `-calls`. Backend contract came from reading the sibling `../backend` source, not from a skill.\n\n- **Where skills were wrong / contradicted the SDK:**\n  - `CometChatIncomingCall` signature: the **calls** skill (rule 1.8) shows a self-managing `CometChatIncomingCall(modifier = ...)` with no call argument \u2014 this **does not compile** (`No value passed for parameter 'call'`). The **compose-placement** skill (\u00a77) was correct: it requires `call =` and must be driven by a `CometChat.addCallListener` \u2192 `StateFlow<Call?>` pattern, which is what I implemented.\n  - `Call` package: not documented explicitly; the skills' listener snippet implies `com.cometchat.chat.models.*`, but the real FQN is `com.cometchat.chat.core.Call` (verified in the resolved chat-sdk AAR after a compile error).\n  - Kotlin floor: the core skill gave conflicting floors (\u22652.1.0 vs \u22652.2.0). Empirically the resolved 6.0.x GA classes need **2.2.0** metadata \u2014 2.1.20 failed. I bumped to 2.2.0.\n\n- **APIs I was unsure existed (candidate hallucinations) \u2014 all now compile-verified against the AARs:** `CometChatMessageHeader(user, hideBackButton=\u2026)`, `CometChatMessageList(user=\u2026)`, `CometChatMessageComposer(user=\u2026)`, `CometChatTheme(colorScheme=\u2026)` + `lightColorScheme()/darkColorScheme()`, `CometChatUIKit.loginWithAuthToken`, `UIKitSettingsBuilder().subscribePresenceForAllUsers().setEnableCalling(true)`, `CometChat.CallListener` overrides, `CometChatIncomingCall(modifier, call)`. I relied on the header's **built-in** call buttons rather than the standalone `CometChatCallButtons` (skill W4 flags it as broken; grep confirms zero usages).\n\n- **Docs-escapes (left skills/docs-mcp):** none \u2014 no web searches. All symbol uncertainties were resolved by inspecting the resolved Gradle-cache AARs (`unzip`/`find`), which is the skills' own stated ground-truth method, not external docs. (docs-mcp was available but not needed.)\n\n- **Scope completed vs incomplete:**\n  - **Completed:** SDK init; backend-token login chained to app session + logout; appointment-scoped 1:1 chat surface; video/voice call entry (header buttons) + app-root incoming-call overlay; RBAC gating; secure credential handling; green `assembleDebug`.\n  - **Not done (out of scope / not requested):** FCM/VoIP **push** for calls when the app is backgrounded (the in-app listener works foreground; background push wiring is a separate `-push` journey), and instrumented device-pair call testing (build-only verification per the gate \u2014 no emulator run). Both noted as follow-ups.",
-    "review_status": "reviewed + human-runtime(android no calling option)",
+    "review_status": "reviewed + human-runtime(android no calling option) + android X1 (calls-init gap, stuck connecting)",
     "review_fields": [
       "skill_activation.false_triggers",
       "integration_outcome.feature_completeness_pct",

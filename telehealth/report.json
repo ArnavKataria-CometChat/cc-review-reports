@@ -40,7 +40,7 @@
   "blocker_tags": {
     "skills": 17,
     "docs-mcp": 2,
-    "agent": 5,
+    "agent": 6,
     "SDK": 4
   },
   "blockers": [
@@ -141,6 +141,13 @@
       "source": "human-checkpoint-runtime",
       "severity": "high",
       "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
+    },
+    {
+      "component": "android",
+      "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
+      "tag": "agent",
+      "source": "human-checkpoint-runtime",
+      "severity": "critical"
     },
     {
       "component": "ios",
@@ -311,6 +318,12 @@
       "component": "android",
       "suggestion": "cometchat-android-v6-calls + cometchat-android-v6-compose-placement should show the exact Compose wiring to surface voice/video call buttons in the message header/consult screen, so 'calling in scope' yields a usable call entry point (not just a chat).",
       "motivated_by": "Android chat has no calling option despite calling in scope (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "cometchat-android-v6-calls must require CometChatCalls.init(CallAppSettingsBuilder{appId,region}) after login AND show the full connect flow: host the ongoing/connecting call session UI and clear it on end/cancel/reject. Mounting only the incoming-call overlay + a listener that tracks a flag gives calls that ring/connect-forever but never establish.",
+      "motivated_by": "Android calls stuck on 'connecting'; Calls SDK never initialized; cancel doesn't dismiss (human-verified runtime).",
       "target": "skills"
     },
     {
