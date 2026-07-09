@@ -8,7 +8,7 @@
 - Build pass: **4/4** · Trigger: **4/4** · Variant: **4/4**
 - Feature completeness (avg): **89.2%** · Ease (avg): **3.8/5**
 - Hallucinations: **0** · docs-escapes: **7** · retries: **7**
-- Findings by tag: {'skills': 16, 'docs-mcp': 2, 'agent': 4, 'SDK': 2}
+- Findings by tag: {'skills': 16, 'docs-mcp': 2, 'agent': 6, 'SDK': 2}
 
 ## Per-platform
 
@@ -39,6 +39,7 @@
 - **[skills]** (android) The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` — the agent only found it by inspecting the resolved AAR after a compile error.
 - **[skills]** (android) The core skill gives a conflicting Kotlin floor (≥2.1.0 vs ≥2.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.
 - **[skills]** (android) V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.
+- **[agent]** (android) Chat works, but Android has NO calling option: despite 'calling' in scope and cometchat-android-v6-calls loaded, no voice/video call buttons are surfaced in the chat/consult screen, so a call cannot be initiated from Android at all. Contradicts the judged calling=true / 92% completeness — build/judge missed it; only runtime shows it.
 - **[skills]** (ios) cometchat-ios-core presents SwiftPM (github.com/cometchat/cometchat-uikit-ios) as a first-class install option, but that package is a single binary target that hard-imports CometChatSDK and CometChatCardsSwift while declaring neither, and CometChatCardsSwift has no SwiftPM package at all — a SwiftPM-only install cannot compile, forcing a manual pivot to CocoaPods.
 - **[SDK]** (ios) UIKit 5.1.16's binary hard-imports CometChatCardsSwift but the podspec does not declare it, and CometChatSDK 4.1.6's podspec lists CometChatStarscream.xcframework under vendored_frameworks while the actual pod download omits it — two transitive modules are missing from the packaged pods, requiring an explicit `pod 'CometChatCardsSwift'` and a hand-authored local CometChatStarscream.podspec vendoring the framework from CometChat's CDN.
 - **[skills]** (ios) The cometchat-ios-calls skill states CallsSDK is vendored inside UIKit with no separate add; this is false for the CocoaPods line — CometChatCallsSDK/WebRTC had to be added explicitly for calling to link.
@@ -49,6 +50,7 @@
 - **[agent]** (ios) iOS Consult Room is stuck in an infinite re-render/task loop: the SwiftUI ConsultRoomLiveView fires GET /api/cometchat/appointments/:id/chat thousands of times (each cancelled, -999) and never reaches the .ready phase, so the 'Open Secure Chat' button + call bar NEVER render and CometChat never initializes (no connect()/login). The chat/calling is effectively non-functional at runtime and also storms the backend. Build gate (xcodebuild) passes; only running it reveals this.
 - **[skills]** (ios) SKILLS ROUTING: the cometchat-ios dispatcher under-triggered — the iOS run loaded ONLY 'cometchat-ios' (the dispatcher), not 'cometchat-ios-core' (which owns 'initialization, login, provider pattern, anti-patterns') nor any SwiftUI sub-skill. (Android by contrast loaded 6 family skills.) So the agent wrote the consult room with no foundational SwiftUI guidance in context — the root enabler of the re-render loop.
 - **[skills]** (ios) SKILLS COVERAGE: even cometchat-ios-core's anti-patterns (§8) are UIKit-centric (init once, singleton manager, retain cycles) and do NOT cover the SwiftUI view-lifecycle pitfall that caused this bug — wrapping the shared manager in @StateObject and driving connect()/access-fetch from a .task that re-fires. No 'observe the shared manager via @EnvironmentObject, key .task on a stable id, run connect() once' guidance exists.
+- **[agent]** (ios) Cross-platform voice/video calling is broken: initiating a call quits/crashes the app immediately (crash the moment the call starts). Calling is non-functional end-to-end even though the build passed and calling was scored in-scope. Chat works; only the call path crashes. Likely a missing call prerequisite (mic/camera permission or Calls SDK init/session setup) — root cause TBD.
 
 ## Prioritized improvement suggestions
 
@@ -67,6 +69,7 @@
 - **[skills]** (android) Replace the conflicting Kotlin floor guidance in the core skill with a single correct minimum (≥2.2.0 for 6.0.x GA), noting the 'incompatible metadata version' failure below it.
 - **[skills]** (android) Add an explicit note in the calls skill that `com.cometchat:calls-sdk-android` is a REQUIRED dependency alongside chatuikit for v6 calling (with the cloudsmith maven repo and version alignment), despite calling being marketed as bundled.
 - **[docs-mcp]** (android) Add docs-mcp coverage for the backend Node/Express CometChat auth-token minting flow (create/sync user with role, mint auth token scoped to the verified session UID) so the agent isn't forced to reverse-engineer it from app source.
+- **[skills]** (android) cometchat-android-v6-calls + cometchat-android-v6-compose-placement should show the exact Compose wiring to surface voice/video call buttons in the message header/consult screen, so 'calling in scope' yields a usable call entry point (not just a chat).
 - **[skills]** (ios) In cometchat-ios-core, demote or remove the SwiftPM install path (or add an explicit warning that the cometchat-uikit-ios SwiftPM package fails to compile because it imports CometChatSDK/CometChatCardsSwift without declaring them) and lead with CocoaPods as the supported iOS install.
 - **[skills]** (ios) Add a 'required transitive pods' note to cometchat-ios-core/components for UIKit 5.1.16: include `pod 'CometChatCardsSwift', '~> 1.1'` and a vendored CometChatStarscream podspec (with the working xcode15 CDN URL), because the shipped pods omit both modules.
 - **[skills]** (ios) Correct cometchat-ios-calls to state that CometChatCallsSDK and CometChatWebRTC must be added explicitly for the CocoaPods integration (they are not transitively vendored by the UIKit pod).
@@ -74,6 +77,7 @@
 - **[docs-mcp]** (ios) Add docs-mcp coverage for the node/express backend CometChat auth-token flow (provision/sync user with role, mint short-lived auth token, return App ID/Region as non-secret bootstrap), since the plugin is frontend-only and this flow has no skill.
 - **[skills]** (ios) cometchat-ios should (a) note that CometChatWebRTC's podspec excludes arm64 for iphonesimulator and (b) ship a Podfile post_install snippet clearing EXCLUDED_ARCHS on CometChat pods, so calling-enabled apps run on Apple Silicon simulators. Ideally the WebRTC podspec drops the exclusion since the xcframework now includes the arm64-sim slice.
 - **[skills]** (ios) cometchat-ios should provide a stable SwiftUI consult-room pattern that runs access-fetch + CometChat connect() exactly once (e.g. .task(id:) keyed only on the stable appointment id, guarding against @StateObject/@EnvironmentObject churn that retriggers the task), so the ready state is reached and the chat/call UI renders without a request storm.
+- **[skills]** (ios) The calls skills (cometchat-react-calls / cometchat-ios / cometchat-android-v6-calls) should require + verify the prerequisites that cause crash-on-initiate: NSMicrophone/NSCamera usage descriptions (iOS), RECORD_AUDIO/CAMERA runtime permissions (Android), and Calls SDK init/login before joinSession — with an explicit 'call crashes if missing' warning.
 
 ## docs-mcp coverage gaps
 

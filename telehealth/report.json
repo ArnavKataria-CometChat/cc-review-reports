@@ -40,7 +40,7 @@
   "blocker_tags": {
     "skills": 16,
     "docs-mcp": 2,
-    "agent": 4,
+    "agent": 6,
     "SDK": 2
   },
   "blockers": [
@@ -121,6 +121,13 @@
       "tag": "skills"
     },
     {
+      "component": "android",
+      "issue": "Chat works, but Android has NO calling option: despite 'calling' in scope and cometchat-android-v6-calls loaded, no voice/video call buttons are surfaced in the chat/consult screen, so a call cannot be initiated from Android at all. Contradicts the judged calling=true / 92% completeness \u2014 build/judge missed it; only runtime shows it.",
+      "tag": "agent",
+      "source": "human-checkpoint-runtime",
+      "severity": "high"
+    },
+    {
       "component": "ios",
       "issue": "cometchat-ios-core presents SwiftPM (github.com/cometchat/cometchat-uikit-ios) as a first-class install option, but that package is a single binary target that hard-imports CometChatSDK and CometChatCardsSwift while declaring neither, and CometChatCardsSwift has no SwiftPM package at all \u2014 a SwiftPM-only install cannot compile, forcing a manual pivot to CocoaPods.",
       "tag": "skills"
@@ -177,6 +184,13 @@
       "tag": "skills",
       "source": "human-checkpoint-runtime",
       "severity": "high"
+    },
+    {
+      "component": "ios",
+      "issue": "Cross-platform voice/video calling is broken: initiating a call quits/crashes the app immediately (crash the moment the call starts). Calling is non-functional end-to-end even though the build passed and calling was scored in-scope. Chat works; only the call path crashes. Likely a missing call prerequisite (mic/camera permission or Calls SDK init/session setup) \u2014 root cause TBD.",
+      "tag": "agent",
+      "source": "human-checkpoint-runtime",
+      "severity": "critical"
     }
   ],
   "improvement_suggestions": [
@@ -271,6 +285,12 @@
       "target": "docs-mcp"
     },
     {
+      "component": "android",
+      "suggestion": "cometchat-android-v6-calls + cometchat-android-v6-compose-placement should show the exact Compose wiring to surface voice/video call buttons in the message header/consult screen, so 'calling in scope' yields a usable call entry point (not just a chat).",
+      "motivated_by": "Android chat has no calling option despite calling in scope (human-verified runtime).",
+      "target": "skills"
+    },
+    {
       "component": "ios",
       "suggestion": "In cometchat-ios-core, demote or remove the SwiftPM install path (or add an explicit warning that the cometchat-uikit-ios SwiftPM package fails to compile because it imports CometChatSDK/CometChatCardsSwift without declaring them) and lead with CocoaPods as the supported iOS install.",
       "motivated_by": "cometchat-ios-core presents a broken SwiftPM install as first-class, forcing a manual pivot to CocoaPods.",
@@ -310,6 +330,12 @@
       "component": "ios",
       "suggestion": "cometchat-ios should provide a stable SwiftUI consult-room pattern that runs access-fetch + CometChat connect() exactly once (e.g. .task(id:) keyed only on the stable appointment id, guarding against @StateObject/@EnvironmentObject churn that retriggers the task), so the ready state is reached and the chat/call UI renders without a request storm.",
       "motivated_by": "iOS consult room infinite task-cancellation loop; button never appears (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "The calls skills (cometchat-react-calls / cometchat-ios / cometchat-android-v6-calls) should require + verify the prerequisites that cause crash-on-initiate: NSMicrophone/NSCamera usage descriptions (iOS), RECORD_AUDIO/CAMERA runtime permissions (Android), and Calls SDK init/login before joinSession \u2014 with an explicit 'call crashes if missing' warning.",
+      "motivated_by": "Cross-platform call crashes on initiation (human-verified runtime).",
       "target": "skills"
     }
   ],
