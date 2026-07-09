@@ -187,10 +187,11 @@
     },
     {
       "component": "ios",
-      "issue": "Cross-platform voice/video calling is broken: initiating a call quits/crashes the app immediately (crash the moment the call starts). Calling is non-functional end-to-end even though the build passed and calling was scored in-scope. Chat works; only the call path crashes. Likely a missing call prerequisite (mic/camera permission or Calls SDK init/session setup) \u2014 root cause TBD.",
+      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD.",
       "tag": "agent",
       "source": "human-checkpoint-runtime",
-      "severity": "critical"
+      "severity": "critical",
+      "scope": "cross-platform (web, android, ios)"
     }
   ],
   "improvement_suggestions": [
@@ -334,8 +335,8 @@
     },
     {
       "component": "ios",
-      "suggestion": "The calls skills (cometchat-react-calls / cometchat-ios / cometchat-android-v6-calls) should require + verify the prerequisites that cause crash-on-initiate: NSMicrophone/NSCamera usage descriptions (iOS), RECORD_AUDIO/CAMERA runtime permissions (Android), and Calls SDK init/login before joinSession \u2014 with an explicit 'call crashes if missing' warning.",
-      "motivated_by": "Cross-platform call crashes on initiation (human-verified runtime).",
+      "suggestion": "The calls skills (cometchat-react-calls / cometchat-ios / cometchat-android-v6-calls) should cover the END-TO-END cross-platform call session: outgoing-call flow, ringing/notification delivery, addCallListener wiring, and presence \u2014 so a call actually connects peer-to-peer instead of being cancelled on initiation. Include a cross-platform (web/native) interop test in the skill's testing guide.",
+      "motivated_by": "Cross-platform calls cancelled on initiation; never connect across web/android/ios (human-verified runtime).",
       "target": "skills"
     }
   ],
