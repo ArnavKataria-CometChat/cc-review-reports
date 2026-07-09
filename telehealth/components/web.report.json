@@ -101,6 +101,12 @@
         "tag": "skills",
         "source": "human-checkpoint-runtime",
         "severity": "high"
+      },
+      {
+        "issue": "After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area \u2014 the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.",
+        "tag": "skills",
+        "source": "human-checkpoint-runtime",
+        "severity": "medium"
       }
     ],
     "improvement_suggestions": [
@@ -138,7 +144,7 @@
   },
   "_meta": {
     "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **CometChat skill variant(s) relied on:** `cometchat` (dispatcher) \u2192 web family: `cometchat-core`, `cometchat-nextjs-patterns`, `cometchat-components`, `cometchat-react-calls`. Detected framework myself (Next.js 14 App Router, TS, React 18) per the requirements rather than asking. Product = chat + calling; customize = **In code** (production app, not a demo); placement = appointment detail; auth = backend-minted token (`loginWithAuthToken`) \u2014 all pre-answered by the task brief.\n- **Calls mode:** Ringing (additive). Per the skill + both v6 sample apps, the default/additive ringing path needs **no** `CometChatCalls.init`/`login` \u2014 just install the calls SDK, mount `<CometChatIncomingCall />` at root, and let `CometChatMessageHeader` auto-render the call buttons. Kept it minimal accordingly.\n- **Where skills/docs were wrong, missing, outdated, or contradicted the SDK:** None encountered. Every symbol I used (`CometChatUIKit`, `UIKitSettingsBuilder`, `loginWithAuthToken`, `CometChatMessageHeader/List/MessageComposer`, `CometChatIncomingCall`, `hideVoice/VideoCallButton`, `hideReplyInThreadOption`) I verified against the **installed** package types before use. The CSS path differs from the skill's literal wording (`dist/styles/css-variables.css` on disk) but the documented `@cometchat/chat-uikit-react/css-variables.css` import resolves correctly via the package `exports` map \u2014 verified, not a discrepancy.\n- **Candidate hallucinations / uncertain APIs:** None knowingly shipped. I confirmed against the SDK `.d.ts`: `CometChat.getUser(uid): Promise<User>`, `new CometChat.User(uid)` + `setName` (used as the not-provisioned-peer fallback), and all UI Kit exports. Resolved versions: uikit-react 6.5.3, chat-sdk 4.1.12, calls-sdk 5.0.1.\n- **Times I left skills/docs-mcp to web-search or guess:** **None.** docs-mcp was not needed \u2014 the loaded skills plus the installed package types were sufficient. No web searches performed.\n- **Scope completed vs. incomplete:**\n  - \u2705 Backend token login flow consumed (`loginWithAuthToken`, no client secrets).\n  - \u2705 RBAC-scoped 1:1 messaging on the appointment screen (patient\u2194doctor).\n  - \u2705 1:1 voice/video calling (header call buttons + app-wide incoming-call listener).\n  - \u2705 RBAC honored: staff blocked (backend 403 handled gracefully), admin remains audit-only, participants get the live surface.\n  - \u2705 SSR-safe, `docker build` gate passes, no committed secrets.\n  - \u26a0\ufe0f **One cross-component dependency I could not fully guarantee from `web/` alone:** opening a conversation needs the **peer** provisioned in CometChat. The backend provisions a user on their own token mint (first login) and on admin create; if a peer has literally never signed in, `CometChat.getUser` 404s. I handle this gracefully (fall back to a lightweight `CometChat.User` so the surface still renders and connects once they log in) and documented it, but a fully robust fix (eagerly provisioning both participants) belongs in the backend service, which is out of my `web/`-only scope.\n  - Not in scope / not done: web push notifications for missed calls (browser can't ring a closed tab \u2014 optional per the calls skill), and threads (intentionally hidden via `hideReplyInThreadOption`).",
-    "review_status": "reviewed + human-runtime(3 layout issues)",
+    "review_status": "reviewed + human-runtime(3 layout issues) + user-verified(W1 scroll OK; W4 dimension mismatch)",
     "review_fields": [
       "skill_activation.false_triggers",
       "integration_outcome.feature_completeness_pct",

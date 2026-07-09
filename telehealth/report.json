@@ -38,7 +38,7 @@
     "cometchat-skills:cometchat-react-calls"
   ],
   "blocker_tags": {
-    "skills": 16,
+    "skills": 17,
     "docs-mcp": 2,
     "agent": 4,
     "SDK": 4
@@ -99,6 +99,13 @@
       "tag": "skills",
       "source": "human-checkpoint-runtime",
       "severity": "high"
+    },
+    {
+      "component": "web",
+      "issue": "After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area \u2014 the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.",
+      "tag": "skills",
+      "source": "human-checkpoint-runtime",
+      "severity": "medium"
     },
     {
       "component": "android",
@@ -188,7 +195,7 @@
     },
     {
       "component": "ios",
-      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD.",
+      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.",
       "tag": "SDK",
       "source": "human-checkpoint-runtime",
       "severity": "critical",
