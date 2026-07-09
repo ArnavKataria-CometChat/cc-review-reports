@@ -2,6 +2,6 @@
 
 - **Code + comparison PR:** ArnavKataria-CometChat/cc-review-telehealth
 - Build 4/4 · completeness 89.2% · ease 3.8/5 · hallucinations 0
-- Findings by tag: {'skills': 16, 'docs-mcp': 2, 'agent': 6, 'SDK': 2}
+- Findings by tag: {'skills': 16, 'docs-mcp': 2, 'agent': 4, 'SDK': 4}
 
 See **report.md** for the full findings, **components/** for per-platform data.

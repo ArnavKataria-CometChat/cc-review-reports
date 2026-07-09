@@ -40,8 +40,8 @@
   "blocker_tags": {
     "skills": 16,
     "docs-mcp": 2,
-    "agent": 6,
-    "SDK": 2
+    "agent": 4,
+    "SDK": 4
   },
   "blockers": [
     {
@@ -122,10 +122,11 @@
     },
     {
       "component": "android",
-      "issue": "Chat works, but Android has NO calling option: despite 'calling' in scope and cometchat-android-v6-calls loaded, no voice/video call buttons are surfaced in the chat/consult screen, so a call cannot be initiated from Android at all. Contradicts the judged calling=true / 92% completeness \u2014 build/judge missed it; only runtime shows it.",
-      "tag": "agent",
+      "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.",
+      "tag": "SDK",
       "source": "human-checkpoint-runtime",
-      "severity": "high"
+      "severity": "high",
+      "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
     },
     {
       "component": "ios",
@@ -188,10 +189,11 @@
     {
       "component": "ios",
       "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD.",
-      "tag": "agent",
+      "tag": "SDK",
       "source": "human-checkpoint-runtime",
       "severity": "critical",
-      "scope": "cross-platform (web, android, ios)"
+      "scope": "cross-platform (web, android, ios)",
+      "note": "reclassified agent->SDK after investigation: call code wired correctly on all platforms; root cause is app-level Voice&Video enablement and/or both-peers-online requirement (config + test method), not code/skills"
     }
   ],
   "improvement_suggestions": [

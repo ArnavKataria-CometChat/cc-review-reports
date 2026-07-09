@@ -90,10 +90,11 @@
         "tag": "skills"
       },
       {
-        "issue": "Chat works, but Android has NO calling option: despite 'calling' in scope and cometchat-android-v6-calls loaded, no voice/video call buttons are surfaced in the chat/consult screen, so a call cannot be initiated from Android at all. Contradicts the judged calling=true / 92% completeness \u2014 build/judge missed it; only runtime shows it.",
-        "tag": "agent",
+        "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.",
+        "tag": "SDK",
         "source": "human-checkpoint-runtime",
-        "severity": "high"
+        "severity": "high",
+        "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
       }
     ],
     "improvement_suggestions": [

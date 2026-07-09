@@ -119,10 +119,11 @@
       },
       {
         "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD.",
-        "tag": "agent",
+        "tag": "SDK",
         "source": "human-checkpoint-runtime",
         "severity": "critical",
-        "scope": "cross-platform (web, android, ios)"
+        "scope": "cross-platform (web, android, ios)",
+        "note": "reclassified agent->SDK after investigation: call code wired correctly on all platforms; root cause is app-level Voice&Video enablement and/or both-peers-online requirement (config + test method), not code/skills"
       }
     ],
     "improvement_suggestions": [
