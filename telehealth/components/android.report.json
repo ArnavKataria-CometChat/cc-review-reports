@@ -1,0 +1,136 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "telehealth",
+    "platform": "android",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "android/compose",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-09T08:27:32.459402Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat",
+      "cometchat-skills:cometchat-android-v6-core",
+      "cometchat-skills:cometchat-android-v6-compose-components",
+      "cometchat-skills:cometchat-android-v6-calls",
+      "cometchat-skills:cometchat-android-v6-compose-theming",
+      "cometchat-skills:cometchat-android-v6-compose-placement"
+    ],
+    "expected_variants": [
+      "android-v6-compose"
+    ],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": null,
+    "feature_completeness_pct": 92,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Only App ID + Region are exposed, sourced from gitignored local.properties via BuildConfig; REST/auth keys stay server-side and login uses a backend-minted auth token \u2014 correct separation. Toolchain/manifest changes (minSdk 28, Kotlin 2.2.0, heap bump, Jetifier, ProGuard keep, call permissions, foreground-service types) are all justified by the CometChat v6 requirement and not gratuitous refactors. Evidence limitation: the actual integration source files (ChatService.kt, ConsultChatScreen.kt, ChatCallOverlay.kt, CometChatToken/AppointmentChatContext models) are referenced by the diff but their bodies are not included, so direct CometChat API usage could not be line-verified; build_pass=true is trusted as ground truth."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": true,
+    "retry_count": 0,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 1010.2,
+    "tokens": {
+      "input": 14488,
+      "output": 62181
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [
+      "Backend Node/Express auth-token minting flow was not sourced from docs-mcp (no queries issued); the agent reconstructed the contract by reading the sibling ../backend source. No evidence docs-mcp was consulted or failed for this, but the expected backend flow was not covered by any tool query."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "Calls skill rule 1.8 documents `CometChatIncomingCall(modifier = ...)` with no `call` argument, which does not compile ('No value passed for parameter call'). The correct usage (a required `call =` driven by CometChat.addCallListener \u2192 StateFlow<Call?>) only appears in the compose-placement skill \u00a77, so the two skills contradict each other.",
+        "tag": "skills"
+      },
+      {
+        "issue": "The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
+        "tag": "skills"
+      },
+      {
+        "issue": "The core skill gives a conflicting Kotlin floor (\u22652.1.0 vs \u22652.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.",
+        "tag": "skills"
+      },
+      {
+        "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
+        "tag": "skills"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Fix calls skill rule 1.8 so the `CometChatIncomingCall` example includes the required `call =` parameter and shows the CometChat.addCallListener \u2192 StateFlow<Call?> driving pattern, aligning it with compose-placement \u00a77 (or cross-reference it).",
+        "motivated_by": "Calls skill rule 1.8 shows a `CometChatIncomingCall(modifier = ...)` signature that does not compile and contradicts compose-placement \u00a77.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Document the fully-qualified `com.cometchat.chat.core.Call` type in the call-listener snippets instead of implying `com.cometchat.chat.models.*`.",
+        "motivated_by": "The `Call` FQN is undocumented and the implied package is wrong, forcing AAR inspection.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Replace the conflicting Kotlin floor guidance in the core skill with a single correct minimum (\u22652.2.0 for 6.0.x GA), noting the 'incompatible metadata version' failure below it.",
+        "motivated_by": "Core skill gives conflicting Kotlin floors (2.1.0 vs 2.2.0) and 2.1.20 fails to compile against 6.0.x GA.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add an explicit note in the calls skill that `com.cometchat:calls-sdk-android` is a REQUIRED dependency alongside chatuikit for v6 calling (with the cloudsmith maven repo and version alignment), despite calling being marketed as bundled.",
+        "motivated_by": "calls-sdk-android is an undocumented required peer dep; without it the app crashes at init.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add docs-mcp coverage for the backend Node/Express CometChat auth-token minting flow (create/sync user with role, mint auth token scoped to the verified session UID) so the agent isn't forced to reverse-engineer it from app source.",
+        "motivated_by": "Backend auth-token flow was reconstructed from sibling ../backend source with no docs-mcp coverage of the expected Node backend flow.",
+        "target": "docs-mcp"
+      }
+    ]
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **CometChat skill variants relied on:** `cometchat` dispatcher \u2192 `cometchat-android-v6-core`, `-compose-components`, `-compose-theming`, `-compose-placement`, and `-calls`. Backend contract came from reading the sibling `../backend` source, not from a skill.\n\n- **Where skills were wrong / contradicted the SDK:**\n  - `CometChatIncomingCall` signature: the **calls** skill (rule 1.8) shows a self-managing `CometChatIncomingCall(modifier = ...)` with no call argument \u2014 this **does not compile** (`No value passed for parameter 'call'`). The **compose-placement** skill (\u00a77) was correct: it requires `call =` and must be driven by a `CometChat.addCallListener` \u2192 `StateFlow<Call?>` pattern, which is what I implemented.\n  - `Call` package: not documented explicitly; the skills' listener snippet implies `com.cometchat.chat.models.*`, but the real FQN is `com.cometchat.chat.core.Call` (verified in the resolved chat-sdk AAR after a compile error).\n  - Kotlin floor: the core skill gave conflicting floors (\u22652.1.0 vs \u22652.2.0). Empirically the resolved 6.0.x GA classes need **2.2.0** metadata \u2014 2.1.20 failed. I bumped to 2.2.0.\n\n- **APIs I was unsure existed (candidate hallucinations) \u2014 all now compile-verified against the AARs:** `CometChatMessageHeader(user, hideBackButton=\u2026)`, `CometChatMessageList(user=\u2026)`, `CometChatMessageComposer(user=\u2026)`, `CometChatTheme(colorScheme=\u2026)` + `lightColorScheme()/darkColorScheme()`, `CometChatUIKit.loginWithAuthToken`, `UIKitSettingsBuilder().subscribePresenceForAllUsers().setEnableCalling(true)`, `CometChat.CallListener` overrides, `CometChatIncomingCall(modifier, call)`. I relied on the header's **built-in** call buttons rather than the standalone `CometChatCallButtons` (skill W4 flags it as broken; grep confirms zero usages).\n\n- **Docs-escapes (left skills/docs-mcp):** none \u2014 no web searches. All symbol uncertainties were resolved by inspecting the resolved Gradle-cache AARs (`unzip`/`find`), which is the skills' own stated ground-truth method, not external docs. (docs-mcp was available but not needed.)\n\n- **Scope completed vs incomplete:**\n  - **Completed:** SDK init; backend-token login chained to app session + logout; appointment-scoped 1:1 chat surface; video/voice call entry (header buttons) + app-root incoming-call overlay; RBAC gating; secure credential handling; green `assembleDebug`.\n  - **Not done (out of scope / not requested):** FCM/VoIP **push** for calls when the app is backgrounded (the in-app listener works foreground; background push wiring is a separate `-push` journey), and instrumented device-pair call testing (build-only verification per the gate \u2014 no emulator run). Both noted as follow-ups.",
+    "review_status": "reviewed",
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}

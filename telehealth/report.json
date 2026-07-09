@@ -1,0 +1,329 @@
+{
+  "use_case": "telehealth",
+  "batch_id": "2026-07-08-baseline",
+  "skills_ref": "main",
+  "platforms": [
+    "backend",
+    "web",
+    "android",
+    "ios"
+  ],
+  "repo": "ArnavKataria-CometChat/cc-review-telehealth",
+  "pr_url": null,
+  "headline": {
+    "build_pass": "4/4",
+    "trigger_accuracy": "4/4",
+    "variant_selection": "4/4",
+    "feature_completeness_avg": 89.2,
+    "ease_avg": 3.8,
+    "docs_escapes_total": 7,
+    "retries_total": 7,
+    "hallucinations_total": 0,
+    "tokens": {
+      "input": 66751,
+      "output": 263498
+    }
+  },
+  "skills_exercised": [
+    "cometchat-skills:cometchat",
+    "cometchat-skills:cometchat-android-v6-calls",
+    "cometchat-skills:cometchat-android-v6-compose-components",
+    "cometchat-skills:cometchat-android-v6-compose-placement",
+    "cometchat-skills:cometchat-android-v6-compose-theming",
+    "cometchat-skills:cometchat-android-v6-core",
+    "cometchat-skills:cometchat-components",
+    "cometchat-skills:cometchat-core",
+    "cometchat-skills:cometchat-ios",
+    "cometchat-skills:cometchat-nextjs-patterns",
+    "cometchat-skills:cometchat-react-calls"
+  ],
+  "blocker_tags": {
+    "skills": 14,
+    "docs-mcp": 2,
+    "agent": 3,
+    "SDK": 1
+  },
+  "blockers": [
+    {
+      "component": "backend",
+      "issue": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.",
+      "tag": "skills"
+    },
+    {
+      "component": "backend",
+      "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
+      "tag": "skills"
+    },
+    {
+      "component": "backend",
+      "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
+      "tag": "skills"
+    },
+    {
+      "component": "web",
+      "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
+      "tag": "agent"
+    },
+    {
+      "component": "web",
+      "issue": "A never-logged-in peer makes CometChat.getUser 404; this is handled only by a client-side `new CometChat.User(uid)` fallback, which does not actually provision the peer server-side, so messaging/calling that user stays unreliable until the backend eagerly provisions both participants.",
+      "tag": "agent"
+    },
+    {
+      "component": "web",
+      "issue": "The CometChat calls SDK references Node built-ins (fs/path), forcing a manual next.config.mjs webpack fallback plus an ssr:false dynamic gate; this SSR/bundler friction is not surfaced by the loaded nextjs-patterns skill and is consistent with the 3 build retries.",
+      "tag": "skills"
+    },
+    {
+      "component": "web",
+      "issue": "Chat message list does not scroll \u2014 the embedded CometChatMessageList wrapper clips overflow (overflow:hidden + fixed 560px), so message history is unreadable. cometchat-react-patterns' chat-layout guidance did not prevent an unscrollable list.",
+      "tag": "skills",
+      "source": "human-checkpoint-runtime",
+      "severity": "high"
+    },
+    {
+      "component": "web",
+      "issue": "Incoming-call popup (CometChatIncomingCall) renders at bottom-left instead of a standard centered overlay \u2014 no placement/positioning recipe in the calls skill for mounting the incoming-call component.",
+      "tag": "skills",
+      "source": "human-checkpoint-runtime",
+      "severity": "cosmetic"
+    },
+    {
+      "component": "web",
+      "issue": "Ongoing call renders as a floating overlay covering only the top half of the screen with a broken bottom half \u2014 the call surface lacks a full-viewport container; react-calls 'call container dimensions' guidance didn't yield a correct full-screen layout.",
+      "tag": "skills",
+      "source": "human-checkpoint-runtime",
+      "severity": "high"
+    },
+    {
+      "component": "android",
+      "issue": "Calls skill rule 1.8 documents `CometChatIncomingCall(modifier = ...)` with no `call` argument, which does not compile ('No value passed for parameter call'). The correct usage (a required `call =` driven by CometChat.addCallListener \u2192 StateFlow<Call?>) only appears in the compose-placement skill \u00a77, so the two skills contradict each other.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "The core skill gives a conflicting Kotlin floor (\u22652.1.0 vs \u22652.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "cometchat-ios-core presents SwiftPM (github.com/cometchat/cometchat-uikit-ios) as a first-class install option, but that package is a single binary target that hard-imports CometChatSDK and CometChatCardsSwift while declaring neither, and CometChatCardsSwift has no SwiftPM package at all \u2014 a SwiftPM-only install cannot compile, forcing a manual pivot to CocoaPods.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "UIKit 5.1.16's binary hard-imports CometChatCardsSwift but the podspec does not declare it, and CometChatSDK 4.1.6's podspec lists CometChatStarscream.xcframework under vendored_frameworks while the actual pod download omits it \u2014 two transitive modules are missing from the packaged pods, requiring an explicit `pod 'CometChatCardsSwift'` and a hand-authored local CometChatStarscream.podspec vendoring the framework from CometChat's CDN.",
+      "tag": "SDK"
+    },
+    {
+      "component": "ios",
+      "issue": "The cometchat-ios-calls skill states CallsSDK is vendored inside UIKit with no separate add; this is false for the CocoaPods line \u2014 CometChatCallsSDK/WebRTC had to be added explicitly for calling to link.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call \u2014 the agent had to code to the resolved .swiftinterface instead of the skill.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "ios",
+      "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
+      "tag": "agent"
+    }
+  ],
+  "improvement_suggestions": [
+    {
+      "component": "backend",
+      "suggestion": "In the cometchat-production skill's user-provisioning section, document that the top-level `role` field on POST /v3/users only accepts dashboard-defined roles and returns 400 'The selected role is invalid' otherwise; show the metadata/tags pattern for carrying free-form app roles and enforcing RBAC server-side.",
+      "motivated_by": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it.",
+      "target": "skills"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Fix the create-user example in the cometchat-production skill to detect duplicates by error.code === 'ERR_UID_ALREADY_EXISTS' (HTTP 400) instead of status === 409 before falling back to PUT.",
+      "motivated_by": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat returns 400 with ERR_UID_ALREADY_EXISTS.",
+      "target": "skills"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Ensure docs-mcp indexes the REST auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens with the { data: { authToken } } response shape and the `apikey` header) so backend integrations do not need to escape to WebFetch/live curl for the expected backend auth path.",
+      "motivated_by": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Standardize the REST header name to the documented lowercase `apikey` throughout the cometchat-production skill examples.",
+      "motivated_by": "Minor skill inconsistency: the skill uses `apiKey` while the official docs use lowercase `apikey`.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add a backend auth-token reference to docs-mcp for node/express (createUser + createAuthToken via the server-only REST API key, returning {uid, authToken, appId, region}) so the agent builds the full mint flow instead of assuming the endpoint exists.",
+      "motivated_by": "Backend node/express auth-token minting endpoint documented but not implemented in the diff.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "suggestion": "In cometchat-nextjs-patterns, document the required next.config.mjs webpack fallback ({ fs:false, path:false }) for the calls SDK plus the dynamic({ssr:false}) mount pattern for the UI Kit, as a first-class recipe.",
+      "motivated_by": "Calls SDK Node built-ins forced a manual webpack fallback and SSR gate, consistent with the 3 build retries.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add an explicit 'both conversation participants must be provisioned before opening a chat/call' note (and the recommended eager-provisioning pattern) to the cometchat-core skill so agents don't ship a client-only getUser 404 fallback.",
+      "motivated_by": "Non-provisioned peer 404 handled only by a client-side new CometChat.User fallback that does not truly provision the peer.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add a copy-paste scrollable message-list recipe to cometchat-react-patterns (flex column; message list flex:1 + min-height:0 + overflow-y:auto; header/composer pinned), verified to actually scroll.",
+      "motivated_by": "Chat won't scroll (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add an incoming-call placement recipe to cometchat-react-calls: where to mount <CometChatIncomingCall/> and the fixed-overlay CSS so it appears as a standard centered banner, not bottom-left.",
+      "motivated_by": "Incoming-call popup mispositioned (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add a first-class full-screen ongoing-call layout recipe (full-viewport container/modal) to cometchat-react-calls so the call surface fills the screen instead of a partial-height overlay.",
+      "motivated_by": "In-call overlay only covers top half (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Fix calls skill rule 1.8 so the `CometChatIncomingCall` example includes the required `call =` parameter and shows the CometChat.addCallListener \u2192 StateFlow<Call?> driving pattern, aligning it with compose-placement \u00a77 (or cross-reference it).",
+      "motivated_by": "Calls skill rule 1.8 shows a `CometChatIncomingCall(modifier = ...)` signature that does not compile and contradicts compose-placement \u00a77.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Document the fully-qualified `com.cometchat.chat.core.Call` type in the call-listener snippets instead of implying `com.cometchat.chat.models.*`.",
+      "motivated_by": "The `Call` FQN is undocumented and the implied package is wrong, forcing AAR inspection.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Replace the conflicting Kotlin floor guidance in the core skill with a single correct minimum (\u22652.2.0 for 6.0.x GA), noting the 'incompatible metadata version' failure below it.",
+      "motivated_by": "Core skill gives conflicting Kotlin floors (2.1.0 vs 2.2.0) and 2.1.20 fails to compile against 6.0.x GA.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Add an explicit note in the calls skill that `com.cometchat:calls-sdk-android` is a REQUIRED dependency alongside chatuikit for v6 calling (with the cloudsmith maven repo and version alignment), despite calling being marketed as bundled.",
+      "motivated_by": "calls-sdk-android is an undocumented required peer dep; without it the app crashes at init.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Add docs-mcp coverage for the backend Node/Express CometChat auth-token minting flow (create/sync user with role, mint auth token scoped to the verified session UID) so the agent isn't forced to reverse-engineer it from app source.",
+      "motivated_by": "Backend auth-token flow was reconstructed from sibling ../backend source with no docs-mcp coverage of the expected Node backend flow.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "ios",
+      "suggestion": "In cometchat-ios-core, demote or remove the SwiftPM install path (or add an explicit warning that the cometchat-uikit-ios SwiftPM package fails to compile because it imports CometChatSDK/CometChatCardsSwift without declaring them) and lead with CocoaPods as the supported iOS install.",
+      "motivated_by": "cometchat-ios-core presents a broken SwiftPM install as first-class, forcing a manual pivot to CocoaPods.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Add a 'required transitive pods' note to cometchat-ios-core/components for UIKit 5.1.16: include `pod 'CometChatCardsSwift', '~> 1.1'` and a vendored CometChatStarscream podspec (with the working xcode15 CDN URL), because the shipped pods omit both modules.",
+      "motivated_by": "UIKit/CometChatSDK pods omit CometChatCardsSwift and CometChatStarscream, which the binaries hard-import.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Correct cometchat-ios-calls to state that CometChatCallsSDK and CometChatWebRTC must be added explicitly for the CocoaPods integration (they are not transitively vendored by the UIKit pod).",
+      "motivated_by": "The cometchat-ios-calls skill's 'CallsSDK is vendored inside UIKit, no separate add' claim is false for the pod line.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Update the login/logout and calling API prose in cometchat-ios-core/cometchat-ios-calls to match the real .swiftinterface: ApiStatus enum results for login/logout, Result<Bool,Error> init closure, and CometChatCallButtons property-based .user/.controller + init(width:height:) + .connect().",
+      "motivated_by": "Skill API shapes for login/logout and CometChatCallButtons diverge from the resolved SDK interface.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Add docs-mcp coverage for the node/express backend CometChat auth-token flow (provision/sync user with role, mint short-lived auth token, return App ID/Region as non-secret bootstrap), since the plugin is frontend-only and this flow has no skill.",
+      "motivated_by": "No docs-mcp guidance was available for the node backend auth-token minting flow, and the backend routes are not in the diff.",
+      "target": "docs-mcp"
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "component": "backend",
+      "gap": "docs-mcp server was not connected in this environment (ToolSearch returned no docs-mcp tools; claude mcp list = none), so all 7 documentation lookups escaped to WebFetch of cometchat.com. No docs-mcp queries were exercised, so its coverage of the backend auth-token REST flow could not be measured here."
+    },
+    {
+      "component": "backend",
+      "gap": "Backend auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens) had to be confirmed via raw web docs + a live curl rather than a first-class doc surface; this is the expected_backend_auth path and should be reliably retrievable from docs-mcp."
+    },
+    {
+      "component": "web",
+      "gap": "Backend node/express auth-token minting flow (createUser + auth-token via REST API key) was neither queried against docs-mcp nor implemented in the diff, despite expected_backend_auth=node being the crux of the integration."
+    },
+    {
+      "component": "android",
+      "gap": "Backend Node/Express auth-token minting flow was not sourced from docs-mcp (no queries issued); the agent reconstructed the contract by reading the sibling ../backend source. No evidence docs-mcp was consulted or failed for this, but the expected backend flow was not covered by any tool query."
+    },
+    {
+      "component": "ios",
+      "gap": "docs-mcp was not wired as an MCP tool in this environment, so no docs-mcp queries were issued; the agent fell back to the installed skills and the resolved SDK's own .swiftinterface as ground truth."
+    },
+    {
+      "component": "ios",
+      "gap": "No docs-mcp guidance was available for the node/express backend CometChat auth-token minting flow (expected_backend_auth = node); the backend /cometchat/* routes are claimed pre-existing and are not in the diff, so the token-minting flow could not be verified from docs-mcp or the diff."
+    }
+  ],
+  "hallucinations": [],
+  "components": {
+    "backend": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 95,
+      "ease": 4
+    },
+    "web": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 85,
+      "ease": 4
+    },
+    "android": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 92,
+      "ease": 4
+    },
+    "ios": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 85,
+      "ease": 3
+    }
+  }
+}

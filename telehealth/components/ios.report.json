@@ -1,0 +1,140 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "telehealth",
+    "platform": "ios",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "ios/swiftui",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-09T08:57:36.870380Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat-ios"
+    ],
+    "expected_variants": [
+      "ios"
+    ],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": null,
+    "feature_completeness_pct": 85,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Changes are focused on the CometChat seam: the disabled Phase-A placeholder in AppointmentDetailView is cleanly replaced by ConsultRoomView, backend token/access calls added to Endpoints/Models, sign-out tears down the session, Info.plist gains camera/mic + VoIP background modes, and verify.sh switches to the workspace. No CometChat secret ships in the client \u2014 App ID/Region/auth token are fetched from the backend at runtime, and .gitignore is hardened against env/cred/xcconfig leaks. ENABLE_USER_SCRIPT_SANDBOXING is flipped YES\u2192NO, which is a legitimate requirement of the added CocoaPods script phases, not an unrelated refactor. IMPORTANT EVIDENCE GAP: the core implementation files the summary and README describe (Chat/CometChatService.swift, ConsultRoomView/ConsultRoomLiveView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, and the local CometChatStarscream.podspec) are NOT present in the provided main...HEAD diff \u2014 only their call sites and the pbxproj Pods wiring are visible. Build-pass (ground truth) and the compiled references (ConsultRoomView, CometChatService) imply those files exist, but they cannot be directly reviewed here."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 3,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 1735.1,
+    "tokens": {
+      "input": 22289,
+      "output": 109656
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [
+      "docs-mcp was not wired as an MCP tool in this environment, so no docs-mcp queries were issued; the agent fell back to the installed skills and the resolved SDK's own .swiftinterface as ground truth.",
+      "No docs-mcp guidance was available for the node/express backend CometChat auth-token minting flow (expected_backend_auth = node); the backend /cometchat/* routes are claimed pre-existing and are not in the diff, so the token-minting flow could not be verified from docs-mcp or the diff."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 3,
+    "blockers": [
+      {
+        "issue": "cometchat-ios-core presents SwiftPM (github.com/cometchat/cometchat-uikit-ios) as a first-class install option, but that package is a single binary target that hard-imports CometChatSDK and CometChatCardsSwift while declaring neither, and CometChatCardsSwift has no SwiftPM package at all \u2014 a SwiftPM-only install cannot compile, forcing a manual pivot to CocoaPods.",
+        "tag": "skills"
+      },
+      {
+        "issue": "UIKit 5.1.16's binary hard-imports CometChatCardsSwift but the podspec does not declare it, and CometChatSDK 4.1.6's podspec lists CometChatStarscream.xcframework under vendored_frameworks while the actual pod download omits it \u2014 two transitive modules are missing from the packaged pods, requiring an explicit `pod 'CometChatCardsSwift'` and a hand-authored local CometChatStarscream.podspec vendoring the framework from CometChat's CDN.",
+        "tag": "SDK"
+      },
+      {
+        "issue": "The cometchat-ios-calls skill states CallsSDK is vendored inside UIKit with no separate add; this is false for the CocoaPods line \u2014 CometChatCallsSDK/WebRTC had to be added explicitly for calling to link.",
+        "tag": "skills"
+      },
+      {
+        "issue": "Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call \u2014 the agent had to code to the resolved .swiftinterface instead of the skill.",
+        "tag": "skills"
+      },
+      {
+        "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
+        "tag": "agent"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "In cometchat-ios-core, demote or remove the SwiftPM install path (or add an explicit warning that the cometchat-uikit-ios SwiftPM package fails to compile because it imports CometChatSDK/CometChatCardsSwift without declaring them) and lead with CocoaPods as the supported iOS install.",
+        "motivated_by": "cometchat-ios-core presents a broken SwiftPM install as first-class, forcing a manual pivot to CocoaPods.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add a 'required transitive pods' note to cometchat-ios-core/components for UIKit 5.1.16: include `pod 'CometChatCardsSwift', '~> 1.1'` and a vendored CometChatStarscream podspec (with the working xcode15 CDN URL), because the shipped pods omit both modules.",
+        "motivated_by": "UIKit/CometChatSDK pods omit CometChatCardsSwift and CometChatStarscream, which the binaries hard-import.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Correct cometchat-ios-calls to state that CometChatCallsSDK and CometChatWebRTC must be added explicitly for the CocoaPods integration (they are not transitively vendored by the UIKit pod).",
+        "motivated_by": "The cometchat-ios-calls skill's 'CallsSDK is vendored inside UIKit, no separate add' claim is false for the pod line.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Update the login/logout and calling API prose in cometchat-ios-core/cometchat-ios-calls to match the real .swiftinterface: ApiStatus enum results for login/logout, Result<Bool,Error> init closure, and CometChatCallButtons property-based .user/.controller + init(width:height:) + .connect().",
+        "motivated_by": "Skill API shapes for login/logout and CometChatCallButtons diverge from the resolved SDK interface.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Add docs-mcp coverage for the node/express backend CometChat auth-token flow (provision/sync user with role, mint short-lived auth token, return App ID/Region as non-secret bootstrap), since the plugin is frontend-only and this flow has no skill.",
+        "motivated_by": "No docs-mcp guidance was available for the node backend auth-token minting flow, and the backend routes are not in the diff.",
+        "target": "docs-mcp"
+      }
+    ]
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n**Result:** CometChat 1:1 chat + voice/video calling is integrated into the iOS consult surface and `./verify.sh` passes (`BUILD SUCCEEDED`, `xcodebuild -workspace Telehealth.xcworkspace -sdk iphonesimulator`). The app links the **real** CometChat UIKit 5.1.16 / SDK 4.1.6 / CallsSDK 5.0.1 / WebRTC \u2014 not a stub.\n\n**Skill variant(s) relied on:** `cometchat-ios` (dispatcher) \u2192 `cometchat-ios-core`, `cometchat-ios-components`, `cometchat-ios-placement`, `cometchat-ios-calls`. I detected the project as SwiftUI + iOS 17 myself and chose the **modal/embedded placement** (chat/call on the appointment-detail Consult Room), not a global chats tab, because the requirement scopes conversations per-appointment to the patient\u2194doctor pair. RBAC is enforced server-side (the backend `/cometchat/*` routes already existed); the client only reflects `canChat`/`canCall`/`peer`.\n\n**Where skills/docs were wrong, missing, or contradicted the SDK** (all verified against the resolved SDK, not assumed):\n1. **SwiftPM path is broken.** `cometchat-ios-core` presents SwiftPM (`add only github.com/cometchat/cometchat-uikit-ios`) as a first-class option. That package is a single binary target whose interface hard-imports `CometChatSDK` **and** `CometChatCardsSwift`, but declares neither \u2014 and `CometChatCardsSwift` has no SwiftPM package at all. A SwiftPM-only install cannot compile. I pivoted to CocoaPods.\n2. **Two transitive modules are missing even from CocoaPods.** The UIKit 5.1.16 podspec declares only `CometChatSDK` (not `CometChatCardsSwift`, which its binary imports), and `CometChatSDK 4.1.6`'s podspec lists `CometChatStarscream.xcframework` under `vendored_frameworks` but the actual download omits it. I fixed both: `pod 'CometChatCardsSwift', '~> 1.1'` and a **local `CometChatStarscream.podspec`** vendoring the standalone framework from CometChat's CDN. The skills document neither gap.\n3. **API shapes differ from skill prose.** `login(authToken:result:)`/`logout(user:result:)` use an `ApiStatus` enum (`.success(User)`/`.onError(CometChatException)`), the init closure is `Result<Bool,Error>`, and `CometChatCallButtons` uses **properties** `.user`/`.controller` + `init(width:height:)` + `.connect()` (not `set(user:)`). I coded to the real `.swiftinterface`.\n4. The `cometchat-ios-calls` skill's \"CallsSDK is vendored inside UIKit, no separate add\" is **not** true for the pod line \u2014 CallsSDK/WebRTC had to be added explicitly.\n\n**Candidate hallucinations / uncertainty:** None shipped unverified \u2014 every symbol used (`UIKitSettings.enable(inAppIncomingCall:)`, `CometChatUIKit` init/login/logout/`getLoggedInUser`, `CometChatMessageHeader/List/Composer.set(user:)/set(controller:)`, `CometChatCallButtons`, `CometChat.getUser(UID:onSuccess:onError:)`) was confirmed by grepping the resolved framework `.swiftinterface` before use. The one thing I did not runtime-exercise is the live call/ring path (no simulator device boot / no real accounts) \u2014 it compiles and links but end-to-end calling is unverified at runtime.\n\n**Docs-escapes (left the skills/docs for external sources):** `docs-mcp` was not wired as an MCP tool in this environment, so my ground truth was the installed skills + the **resolved SDK's own `.swiftinterface`**. I did NOT use a general web search engine. I did make direct network probes to diagnose the packaging breakage: `git ls-remote` and `curl` against `github.com/cometchat/*`, the CocoaPods CDN (`cdn.cocoapods.org` podspec JSON), `dl.cloudsmith.io` and `library.cometchat.io` (to confirm which `CometChatStarscream` xcframework URL serves 200 \u2014 the `xcode16` URL 403s, `xcode15` works). These were verification/URL-discovery, not API invention.\n\n**Scope completed:** backend token/config REST wiring (`POST /cometchat/token`, `GET /cometchat/appointments/:id/chat`); `CometChatService` (init-once from backend-provided App ID/Region with **no auth key shipped**, `login(authToken:)`, logout on sign-out); 1:1 chat (`MessagesVC` header+list+composer) and voice/video (`CometChatCallButtons` + `enable(inAppIncomingCall:)`) on the appointment detail Consult Room; RBAC reflection (patient/doctor only; staff hidden/403; admin audit-only, not a participant); Info.plist camera/mic + background modes; `.gitignore`/`verify.sh` updated; no secrets committed (scanned).\n\n**Left incomplete / notes:** (1) VoIP **PushKit/CallKit** background ringing is not wired \u2014 only the kit's foreground incoming-call UI (`enable(inAppIncomingCall:true)`); backgrounded-device ringing would need PushKit + a VoIP cert (out of scope for a build-gated simulator integration). (2) Runtime call/message flow is unverified (no booted sim / live CometChat session). (3) I edited only `ios/`; the backend `/cometchat/*` routes and Android were already present and untouched.",
+    "review_status": "reviewed",
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}

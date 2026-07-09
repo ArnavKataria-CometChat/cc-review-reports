@@ -1,0 +1,154 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "telehealth",
+    "platform": "web",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "web/nextjs",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-09T08:05:06.744213Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat",
+      "cometchat-skills:cometchat-core",
+      "cometchat-skills:cometchat-nextjs-patterns",
+      "cometchat-skills:cometchat-components",
+      "cometchat-skills:cometchat-react-calls"
+    ],
+    "expected_variants": [
+      "nextjs"
+    ],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": null,
+    "feature_completeness_pct": 85,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Changes shown are frontend-only (web/.env.example, README, next.config.mjs, package-lock) plus referenced components (CometChatProvider/CometChatGate/AppointmentConsult) whose source is beyond the truncation and could not be directly inspected. What is visible is minimal and idiomatic: SSR-safe dynamic({ssr:false}) gate, an app-root <CometChatIncomingCall/>, and a webpack fs/path fallback for the calls SDK's Node built-ins. .env.example correctly strips CometChat placeholders and pushes all secrets (App ID/Region/Auth Key/REST key) to the backend env; no secrets committed. Backend node/express token-mint code is not present in the provided diff."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 3,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 757.4,
+    "tokens": {
+      "input": 14975,
+      "output": 43309
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [
+      "Backend node/express auth-token minting flow (createUser + auth-token via REST API key) was neither queried against docs-mcp nor implemented in the diff, despite expected_backend_auth=node being the crux of the integration."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
+        "tag": "agent"
+      },
+      {
+        "issue": "A never-logged-in peer makes CometChat.getUser 404; this is handled only by a client-side `new CometChat.User(uid)` fallback, which does not actually provision the peer server-side, so messaging/calling that user stays unreliable until the backend eagerly provisions both participants.",
+        "tag": "agent"
+      },
+      {
+        "issue": "The CometChat calls SDK references Node built-ins (fs/path), forcing a manual next.config.mjs webpack fallback plus an ssr:false dynamic gate; this SSR/bundler friction is not surfaced by the loaded nextjs-patterns skill and is consistent with the 3 build retries.",
+        "tag": "skills"
+      },
+      {
+        "issue": "Chat message list does not scroll \u2014 the embedded CometChatMessageList wrapper clips overflow (overflow:hidden + fixed 560px), so message history is unreadable. cometchat-react-patterns' chat-layout guidance did not prevent an unscrollable list.",
+        "tag": "skills",
+        "source": "human-checkpoint-runtime",
+        "severity": "high"
+      },
+      {
+        "issue": "Incoming-call popup (CometChatIncomingCall) renders at bottom-left instead of a standard centered overlay \u2014 no placement/positioning recipe in the calls skill for mounting the incoming-call component.",
+        "tag": "skills",
+        "source": "human-checkpoint-runtime",
+        "severity": "cosmetic"
+      },
+      {
+        "issue": "Ongoing call renders as a floating overlay covering only the top half of the screen with a broken bottom half \u2014 the call surface lacks a full-viewport container; react-calls 'call container dimensions' guidance didn't yield a correct full-screen layout.",
+        "tag": "skills",
+        "source": "human-checkpoint-runtime",
+        "severity": "high"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a backend auth-token reference to docs-mcp for node/express (createUser + createAuthToken via the server-only REST API key, returning {uid, authToken, appId, region}) so the agent builds the full mint flow instead of assuming the endpoint exists.",
+        "motivated_by": "Backend node/express auth-token minting endpoint documented but not implemented in the diff.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "In cometchat-nextjs-patterns, document the required next.config.mjs webpack fallback ({ fs:false, path:false }) for the calls SDK plus the dynamic({ssr:false}) mount pattern for the UI Kit, as a first-class recipe.",
+        "motivated_by": "Calls SDK Node built-ins forced a manual webpack fallback and SSR gate, consistent with the 3 build retries.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add an explicit 'both conversation participants must be provisioned before opening a chat/call' note (and the recommended eager-provisioning pattern) to the cometchat-core skill so agents don't ship a client-only getUser 404 fallback.",
+        "motivated_by": "Non-provisioned peer 404 handled only by a client-side new CometChat.User fallback that does not truly provision the peer.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add a copy-paste scrollable message-list recipe to cometchat-react-patterns (flex column; message list flex:1 + min-height:0 + overflow-y:auto; header/composer pinned), verified to actually scroll.",
+        "motivated_by": "Chat won't scroll (human-verified runtime).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add an incoming-call placement recipe to cometchat-react-calls: where to mount <CometChatIncomingCall/> and the fixed-overlay CSS so it appears as a standard centered banner, not bottom-left.",
+        "motivated_by": "Incoming-call popup mispositioned (human-verified runtime).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add a first-class full-screen ongoing-call layout recipe (full-viewport container/modal) to cometchat-react-calls so the call surface fills the screen instead of a partial-height overlay.",
+        "motivated_by": "In-call overlay only covers top half (human-verified runtime).",
+        "target": "skills"
+      }
+    ]
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **CometChat skill variant(s) relied on:** `cometchat` (dispatcher) \u2192 web family: `cometchat-core`, `cometchat-nextjs-patterns`, `cometchat-components`, `cometchat-react-calls`. Detected framework myself (Next.js 14 App Router, TS, React 18) per the requirements rather than asking. Product = chat + calling; customize = **In code** (production app, not a demo); placement = appointment detail; auth = backend-minted token (`loginWithAuthToken`) \u2014 all pre-answered by the task brief.\n- **Calls mode:** Ringing (additive). Per the skill + both v6 sample apps, the default/additive ringing path needs **no** `CometChatCalls.init`/`login` \u2014 just install the calls SDK, mount `<CometChatIncomingCall />` at root, and let `CometChatMessageHeader` auto-render the call buttons. Kept it minimal accordingly.\n- **Where skills/docs were wrong, missing, outdated, or contradicted the SDK:** None encountered. Every symbol I used (`CometChatUIKit`, `UIKitSettingsBuilder`, `loginWithAuthToken`, `CometChatMessageHeader/List/MessageComposer`, `CometChatIncomingCall`, `hideVoice/VideoCallButton`, `hideReplyInThreadOption`) I verified against the **installed** package types before use. The CSS path differs from the skill's literal wording (`dist/styles/css-variables.css` on disk) but the documented `@cometchat/chat-uikit-react/css-variables.css` import resolves correctly via the package `exports` map \u2014 verified, not a discrepancy.\n- **Candidate hallucinations / uncertain APIs:** None knowingly shipped. I confirmed against the SDK `.d.ts`: `CometChat.getUser(uid): Promise<User>`, `new CometChat.User(uid)` + `setName` (used as the not-provisioned-peer fallback), and all UI Kit exports. Resolved versions: uikit-react 6.5.3, chat-sdk 4.1.12, calls-sdk 5.0.1.\n- **Times I left skills/docs-mcp to web-search or guess:** **None.** docs-mcp was not needed \u2014 the loaded skills plus the installed package types were sufficient. No web searches performed.\n- **Scope completed vs. incomplete:**\n  - \u2705 Backend token login flow consumed (`loginWithAuthToken`, no client secrets).\n  - \u2705 RBAC-scoped 1:1 messaging on the appointment screen (patient\u2194doctor).\n  - \u2705 1:1 voice/video calling (header call buttons + app-wide incoming-call listener).\n  - \u2705 RBAC honored: staff blocked (backend 403 handled gracefully), admin remains audit-only, participants get the live surface.\n  - \u2705 SSR-safe, `docker build` gate passes, no committed secrets.\n  - \u26a0\ufe0f **One cross-component dependency I could not fully guarantee from `web/` alone:** opening a conversation needs the **peer** provisioned in CometChat. The backend provisions a user on their own token mint (first login) and on admin create; if a peer has literally never signed in, `CometChat.getUser` 404s. I handle this gracefully (fall back to a lightweight `CometChat.User` so the surface still renders and connects once they log in) and documented it, but a fully robust fix (eagerly provisioning both participants) belongs in the backend service, which is out of my `web/`-only scope.\n  - Not in scope / not done: web push notifications for missed calls (browser can't ring a closed tab \u2014 optional per the calls skill), and threads (intentionally hidden via `hideReplyInThreadOption`).",
+    "review_status": "reviewed + human-runtime(3 layout issues)",
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}

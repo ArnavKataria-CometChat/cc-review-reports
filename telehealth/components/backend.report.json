@@ -1,0 +1,133 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "telehealth",
+    "platform": "backend",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "backend/express",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-09T08:04:03.162915Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat"
+    ],
+    "expected_variants": [],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": null,
+    "feature_completeness_pct": 95,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Clean, self-contained backend integration: a dedicated config block, one services/cometchat.ts REST client, and one routes/cometchat.ts. The REST API Key is server-only and never surfaced to clients (config returns only appId+region+token); UID is derived from the verified session, not the request body \u2014 good security posture. .env.example holds empty placeholders (COMETCHAT_REGION=us is a non-secret default) and .env is gitignored. Sensible extras: 503 when unconfigured, best-effort non-blocking provisioning on admin create, retry/backoff with jitter. No unrelated refactors."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 1,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 7,
+    "docs_escape_queries": [
+      "https://api-explorer.cometchat.com/reference/creates-user",
+      "https://www.cometchat.com/docs/authentication/auth-token",
+      "https://www.cometchat.com/docs/rest-api/users/create",
+      "https://www.cometchat.com/docs/rest-api/authentication-tokens/create-authtoken",
+      "https://www.cometchat.com/docs/rest-api/authentication-tokens/create-a-user-auth-token",
+      "https://www.cometchat.com/docs/llms.txt",
+      "https://www.cometchat.com/docs/rest-api/auth-tokens/create.md"
+    ],
+    "wall_clock_seconds": 803.1,
+    "tokens": {
+      "input": 14999,
+      "output": 48352
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [
+      "docs-mcp server was not connected in this environment (ToolSearch returned no docs-mcp tools; claude mcp list = none), so all 7 documentation lookups escaped to WebFetch of cometchat.com. No docs-mcp queries were exercised, so its coverage of the backend auth-token REST flow could not be measured here.",
+      "Backend auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens) had to be confirmed via raw web docs + a live curl rather than a first-class doc surface; this is the expected_backend_auth path and should be reliably retrievable from docs-mcp."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.",
+        "tag": "skills"
+      },
+      {
+        "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
+        "tag": "skills"
+      },
+      {
+        "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
+        "tag": "skills"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "In the cometchat-production skill's user-provisioning section, document that the top-level `role` field on POST /v3/users only accepts dashboard-defined roles and returns 400 'The selected role is invalid' otherwise; show the metadata/tags pattern for carrying free-form app roles and enforcing RBAC server-side.",
+        "motivated_by": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Fix the create-user example in the cometchat-production skill to detect duplicates by error.code === 'ERR_UID_ALREADY_EXISTS' (HTTP 400) instead of status === 409 before falling back to PUT.",
+        "motivated_by": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat returns 400 with ERR_UID_ALREADY_EXISTS.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Ensure docs-mcp indexes the REST auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens with the { data: { authToken } } response shape and the `apikey` header) so backend integrations do not need to escape to WebFetch/live curl for the expected backend auth path.",
+        "motivated_by": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Standardize the REST header name to the documented lowercase `apikey` throughout the cometchat-production skill examples.",
+        "motivated_by": "Minor skill inconsistency: the skill uses `apiKey` while the official docs use lowercase `apikey`.",
+        "target": "skills"
+      }
+    ]
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Skill variant relied on:** `cometchat-skills:cometchat` dispatcher \u2192 routed to **`cometchat-production`** (server-side token auth + user-management REST patterns). The UI-kit/framework skills didn't apply since this is the backend component. Cross-checked every endpoint against the official CometChat v3 REST docs.\n\n- **Where skills/docs were wrong, outdated, or contradicted the API** (verified empirically against a live app, region `in`):\n  1. **`role` field is dashboard-gated.** The `cometchat-production` skill implies you can set an arbitrary `role` on `POST /v3/users`. The live API rejects it with `400 ERR_BAD_REQUEST \u2014 \"The selected role is invalid.\"` unless the role is pre-defined in the dashboard's Roles & Permissions. **Fix:** carry the app role in `metadata.appRole` + `tags` (both free-form, confirmed working) and enforce RBAC server-side.\n  2. **\"Already exists\" is `400 ERR_UID_ALREADY_EXISTS`, not `409`.** The skill's create-user example checks `status === 409` for the create\u2192update fallback \u2014 that branch never fires against the real API, so a naive port silently fails on every second login. **Fix:** detect by `error.code === 'ERR_UID_ALREADY_EXISTS'` (kept 409 as a fallback), then `PUT`.\n  3. Header casing: skill uses `apiKey`; official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work; I used `apikey` to match docs.\n\n- **Candidate hallucinations / uncertainty:** none shipped. Every symbol (`POST /v3/users`, `PUT /v3/users/{uid}`, `POST /v3/users/{uid}/auth_tokens` \u2192 `data.authToken`, `DELETE` with `{\"permanent\":true}`, the `role`/`metadata`/`tags` fields) was confirmed against a live API call before relying on it.\n\n- **Docs-escapes (left skills / docs-mcp):** The `docs-mcp` server **was not connected** in this environment (`ToolSearch` for its tools returned nothing; `claude mcp list` = none configured). I fell back to:\n  - **WebFetch** of official docs to confirm the create-user body fields and auth-token endpoint. Queries: create-user URL `https://www.cometchat.com/docs/rest-api/users/create` (\"what fields does POST /v3/users accept; are role/metadata/tags supported; required headers?\"); index `https://www.cometchat.com/docs/llms.txt` (\"URLs for create auth token endpoint\"); auth-token URL `https://www.cometchat.com/docs/rest-api/auth-tokens/create.md` (\"confirm POST /v3/users/{uid}/auth_tokens, headers, response shape\").\n  - **Live `curl`** against the actual CometChat REST API to resolve the two discrepancies above (no web-search or guessing \u2014 direct API observation).\n\n- **Scope completed:** backend auth-token generation flow; app-user\u2192CometChat-user mapping with role; RBAC-honoring appointment-scoped 1:1 chat/call context (patient\u2194doctor only, staff blocked, admin audit-only); secrets in gitignored env with server-only REST key; README + `.env.example` documented; `verify.sh`/`docker build` still green.\n\n- **Left incomplete / notes:** No frontend work (out of scope for the `backend/` component; siblings must not be touched). `verify.sh` was **not extended** \u2014 the integration added no build steps (no new deps), so the existing typecheck+build+docker gate already covers it. One inherent caveat from the Phase A baseline: the in-memory store regenerates user IDs on each boot, so restarts orphan previously-provisioned CometChat users \u2014 a non-issue once the store is backed by a persistent DB (stable IDs), which the baseline is structured to allow.",
+    "review_status": "reviewed",
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}
