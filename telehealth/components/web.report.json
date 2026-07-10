@@ -64,18 +64,12 @@
   },
   "docs_mcp": {
     "queries": [],
-    "coverage_gaps": [
-      "Backend node/express auth-token minting flow (createUser + auth-token via REST API key) was neither queried against docs-mcp nor implemented in the diff, despite expected_backend_auth=node being the crux of the integration."
-    ],
+    "coverage_gaps": [],
     "staleness_conflicts": []
   },
   "summary": {
     "ease_of_integration": 4,
     "blockers": [
-      {
-        "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
-        "tag": "agent"
-      },
       {
         "issue": "A never-logged-in peer makes CometChat.getUser 404; this is handled only by a client-side `new CometChat.User(uid)` fallback, which does not actually provision the peer server-side, so messaging/calling that user stays unreliable until the backend eagerly provisions both participants.",
         "tag": "agent"
@@ -150,6 +144,16 @@
         "suggestion": "cometchat-react-calls must correct the 'additive/ringing mode needs no init' guidance: document that calls to actually CONNECT require CometChatCalls.init() after login AND a mounted ongoing-call session host (CometChatOngoingCall or the kit's call manager wired to the CallListener) \u2014 mounting only CometChatIncomingCall gives ringing that never connects. Add a 2-client connect test to the skill.",
         "motivated_by": "Web (and cross-platform) calls ring but never connect: no CometChatCalls.init + only IncomingCall mounted (2-client verified).",
         "target": "skills"
+      }
+    ],
+    "retracted": [
+      {
+        "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
+        "tag": "agent",
+        "disposition": "methodology-artifact",
+        "reason": "Half diff-visibility artifact (backend is a separate component), half a double-count of 'agent never queried docs-mcp for the backend flow' \u2014 already captured in the docs-mcp infra note. Trimmed.",
+        "original_source": null,
+        "issue_id": null
       }
     ]
   },

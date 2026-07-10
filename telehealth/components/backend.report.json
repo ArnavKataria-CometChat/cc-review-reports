@@ -67,8 +67,7 @@
   "docs_mcp": {
     "queries": [],
     "coverage_gaps": [
-      "docs-mcp server was not connected in this environment (ToolSearch returned no docs-mcp tools; claude mcp list = none), so all 7 documentation lookups escaped to WebFetch of cometchat.com. No docs-mcp queries were exercised, so its coverage of the backend auth-token REST flow could not be measured here.",
-      "Backend auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens) had to be confirmed via raw web docs + a live curl rather than a first-class doc surface; this is the expected_backend_auth path and should be reliably retrievable from docs-mcp."
+      "INFRA (not a content gap): docs-mcp was NOT wired this run (ToolSearch returned no docs-mcp tools; `claude mcp list` = none), so docs-mcp coverage of the backend auth-token flow is UNMEASURED \u2014 re-run with docs-mcp wired to actually measure it. Low-confidence lead to re-check then: the backend auth-token REST flow was hard to assemble even from raw web docs."
     ],
     "staleness_conflicts": []
   },
@@ -81,14 +80,6 @@
       },
       {
         "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
-        "tag": "skills"
-      },
-      {
-        "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
-        "tag": "docs-mcp"
-      },
-      {
-        "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
         "tag": "skills"
       }
     ],
@@ -112,6 +103,24 @@
         "suggestion": "Standardize the REST header name to the documented lowercase `apikey` throughout the cometchat-production skill examples.",
         "motivated_by": "Minor skill inconsistency: the skill uses `apiKey` while the official docs use lowercase `apikey`.",
         "target": "skills"
+      }
+    ],
+    "retracted": [
+      {
+        "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
+        "tag": "docs-mcp",
+        "disposition": "docs-mcp-infra",
+        "reason": "HARNESS INFRA, not a docs-mcp content gap: docs-mcp server was not wired (mcp list=none), so its coverage of the backend auth-token flow is UNMEASURED. ACTION: wire docs-mcp env and re-run to measure. Low-confidence lead pending re-run: the backend auth-token REST flow was hard to assemble even from raw web docs (reconstructed from sibling source + a live curl).",
+        "original_source": null,
+        "issue_id": null
+      },
+      {
+        "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
+        "tag": "skills",
+        "disposition": "demoted-nit",
+        "reason": "Functionally zero \u2014 HTTP headers are case-insensitive so both work. Real but trivial skill/doc casing divergence; kept as a nit, not a blocker.",
+        "original_source": null,
+        "issue_id": null
       }
     ]
   },

@@ -60,10 +60,7 @@
   },
   "docs_mcp": {
     "queries": [],
-    "coverage_gaps": [
-      "docs-mcp was not wired as an MCP tool in this environment, so no docs-mcp queries were issued; the agent fell back to the installed skills and the resolved SDK's own .swiftinterface as ground truth.",
-      "No docs-mcp guidance was available for the node/express backend CometChat auth-token minting flow (expected_backend_auth = node); the backend /cometchat/* routes are claimed pre-existing and are not in the diff, so the token-minting flow could not be verified from docs-mcp or the diff."
-    ],
+    "coverage_gaps": [],
     "staleness_conflicts": []
   },
   "summary": {
@@ -84,14 +81,6 @@
       {
         "issue": "Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call \u2014 the agent had to code to the resolved .swiftinterface instead of the skill.",
         "tag": "skills"
-      },
-      {
-        "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
-        "tag": "docs-mcp"
-      },
-      {
-        "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
-        "tag": "agent"
       },
       {
         "issue": "CometChatWebRTC's pod xcconfig sets EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64, which propagates to Pods-Telehealth and forces the whole app to build x86_64-only for the simulator. This breaks install/run on Apple Silicon simulators (arch mismatch) even though WebRTC.xcframework SHIPS the ios-arm64_x86_64-simulator slice. Passes the xcodebuild build gate (x86_64), fails only at install/run \u2014 a build-pass != runtime gap.",
@@ -116,14 +105,6 @@
         "tag": "skills",
         "source": "human-checkpoint-runtime",
         "severity": "high"
-      },
-      {
-        "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: iOS calling CONFIRMED WORKING in a live 2-client call (connected, media flowed, 'Dr. Gregory House has joined the conference'). iOS Swift UIKit initializes calling internally via UIKitSettings.enable(inAppIncomingCall:) \u2014 NO CometChatCalls.init needed. The cross-platform break was ANDROID-ONLY (missing CometChatCalls.init), now fixed. This iOS finding was a FALSE POSITIVE. (iOS ghost-call teardown \u2014 remote-end not dismissing the local ongoing-call UI \u2014 remains open.)",
-        "tag": "SDK",
-        "source": "human-checkpoint-runtime",
-        "severity": "critical",
-        "scope": "cross-platform (web, android, ios)",
-        "note": "reclassified agent->SDK after investigation: call code wired correctly on all platforms; root cause is app-level Voice&Video enablement and/or both-peers-online requirement (config + test method), not code/skills"
       },
       {
         "issue": "I3 \u2014 iOS in-app incoming-call popup is swallowed when the chat is opened as a modal (.sheet/.fullScreenCover): the UI Kit presents CometChatIncomingCall on the KEY-WINDOW ROOT, which is already presenting the modal, so UIKit rejects it ('...which is already presenting') and the inbound call is silently MISSED. Confirmed live 2-client; unified-log literal 'Attempt to present <CometChatUIKitSwift.CometChatIncomingCall'.",
@@ -199,6 +180,32 @@
         "suggestion": "Kit/UIKit must reset its call state after a completed session \u2014 audit CometChat.addCallListener/removeCallListener observer-ids and the CallingExtension reset so a second call re-registers and reaches the ongoing screen.",
         "motivated_by": "I5 \u2014 iOS: only the FIRST call per app launch connects. After ANY completed 1:1 call, the next call (incoming or outgoing) never transitions to the ongoing screen (sticks at 'Calling' / silently drops; the peer joins a conference-of-one); only a full app kill+relaunch recovers. CONTROL-PROVEN kit-internal: reproduced with call #1 ended by the kit's own red-button path and zero app call code running. iOS-only (Android joins call 2+).",
         "target": "skills"
+      }
+    ],
+    "retracted": [
+      {
+        "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: iOS calling CONFIRMED WORKING in a live 2-client call (connected, media flowed, 'Dr. Gregory House has joined the conference'). iOS Swift UIKit initializes calling internally via UIKitSettings.enable(inAppIncomingCall:) \u2014 NO CometChatCalls.init needed. The cross-platform break was ANDROID-ONLY (missing CometChatCalls.init), now fixed. This iOS finding was a FALSE POSITIVE. (iOS ghost-call teardown \u2014 remote-end not dismissing the local ongoing-call UI \u2014 remains open.)",
+        "tag": "SDK",
+        "disposition": "retracted-false-positive",
+        "reason": "Self-invalidated: its own update confirms iOS calling CONNECTS live; the only real signal (android missing CometChatCalls.init) is captured by the android 'connecting' finding. Kept for audit trail.",
+        "original_source": "human-checkpoint-runtime",
+        "issue_id": null
+      },
+      {
+        "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
+        "tag": "agent",
+        "disposition": "methodology-artifact",
+        "reason": "Describes what main..HEAD showed the reviewer, not a skill/SDK defect \u2014 the files exist in the integration. Confidence caveat, not a finding.",
+        "original_source": null,
+        "issue_id": null
+      },
+      {
+        "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
+        "tag": "docs-mcp",
+        "disposition": "docs-mcp-unmeasured",
+        "reason": "docs-mcp was not wired this run, so backend-token coverage is UNMEASURED, not confirmed-absent. Folded into the single docs-mcp infra note.",
+        "original_source": null,
+        "issue_id": null
       }
     ]
   },

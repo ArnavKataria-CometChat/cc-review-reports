@@ -65,9 +65,7 @@
   },
   "docs_mcp": {
     "queries": [],
-    "coverage_gaps": [
-      "Backend Node/Express auth-token minting flow was not sourced from docs-mcp (no queries issued); the agent reconstructed the contract by reading the sibling ../backend source. No evidence docs-mcp was consulted or failed for this, but the expected backend flow was not covered by any tool query."
-    ],
+    "coverage_gaps": [],
     "staleness_conflicts": []
   },
   "summary": {
@@ -88,13 +86,6 @@
       {
         "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
         "tag": "skills"
-      },
-      {
-        "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
-        "tag": "skills",
-        "source": "human-checkpoint-runtime",
-        "severity": "high",
-        "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
       },
       {
         "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
@@ -167,6 +158,16 @@
         "suggestion": "Kit should finish the ongoing-call activity on a remote 1:1 end; at minimum the docs must flag that onCallEndedMessageReceived (a no-op default) MUST be overridden for remote-end teardown.",
         "motivated_by": "A4 \u2014 Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.",
         "target": "skills"
+      }
+    ],
+    "retracted": [
+      {
+        "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
+        "tag": "skills",
+        "disposition": "superseded-by-A2",
+        "reason": "Stale intermediate conclusion ('code is actually correct') that the report itself reversed; fully replaced by A2 (header hides call buttons by default). Kept for audit trail.",
+        "original_source": "human-checkpoint-runtime",
+        "issue_id": null
       }
     ]
   },

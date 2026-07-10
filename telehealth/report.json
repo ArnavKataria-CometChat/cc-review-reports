@@ -38,10 +38,9 @@
     "cometchat-skills:cometchat-react-calls"
   ],
   "blocker_tags": {
-    "skills": 24,
-    "docs-mcp": 2,
-    "agent": 6,
-    "SDK": 3
+    "skills": 22,
+    "agent": 4,
+    "SDK": 2
   },
   "blockers": [
     {
@@ -53,21 +52,6 @@
       "component": "backend",
       "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
       "tag": "skills"
-    },
-    {
-      "component": "backend",
-      "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
-      "tag": "docs-mcp"
-    },
-    {
-      "component": "backend",
-      "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
-      "tag": "skills"
-    },
-    {
-      "component": "web",
-      "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
-      "tag": "agent"
     },
     {
       "component": "web",
@@ -136,14 +120,6 @@
     },
     {
       "component": "android",
-      "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
-      "tag": "skills",
-      "source": "human-checkpoint-runtime",
-      "severity": "high",
-      "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
-    },
-    {
-      "component": "android",
       "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
       "tag": "agent",
       "source": "human-checkpoint-runtime",
@@ -188,16 +164,6 @@
     },
     {
       "component": "ios",
-      "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
-      "tag": "docs-mcp"
-    },
-    {
-      "component": "ios",
-      "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
-      "tag": "agent"
-    },
-    {
-      "component": "ios",
       "issue": "CometChatWebRTC's pod xcconfig sets EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64, which propagates to Pods-Telehealth and forces the whole app to build x86_64-only for the simulator. This breaks install/run on Apple Silicon simulators (arch mismatch) even though WebRTC.xcframework SHIPS the ios-arm64_x86_64-simulator slice. Passes the xcodebuild build gate (x86_64), fails only at install/run \u2014 a build-pass != runtime gap.",
       "tag": "SDK",
       "source": "human-checkpoint-runtime",
@@ -226,15 +192,6 @@
     },
     {
       "component": "ios",
-      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: iOS calling CONFIRMED WORKING in a live 2-client call (connected, media flowed, 'Dr. Gregory House has joined the conference'). iOS Swift UIKit initializes calling internally via UIKitSettings.enable(inAppIncomingCall:) \u2014 NO CometChatCalls.init needed. The cross-platform break was ANDROID-ONLY (missing CometChatCalls.init), now fixed. This iOS finding was a FALSE POSITIVE. (iOS ghost-call teardown \u2014 remote-end not dismissing the local ongoing-call UI \u2014 remains open.)",
-      "tag": "SDK",
-      "source": "human-checkpoint-runtime",
-      "severity": "critical",
-      "scope": "cross-platform (web, android, ios)",
-      "note": "reclassified agent->SDK after investigation: call code wired correctly on all platforms; root cause is app-level Voice&Video enablement and/or both-peers-online requirement (config + test method), not code/skills"
-    },
-    {
-      "component": "ios",
       "issue": "I3 \u2014 iOS in-app incoming-call popup is swallowed when the chat is opened as a modal (.sheet/.fullScreenCover): the UI Kit presents CometChatIncomingCall on the KEY-WINDOW ROOT, which is already presenting the modal, so UIKit rejects it ('...which is already presenting') and the inbound call is silently MISSED. Confirmed live 2-client; unified-log literal 'Attempt to present <CometChatUIKitSwift.CometChatIncomingCall'.",
       "tag": "skills",
       "issue_id": "I3",
@@ -253,6 +210,71 @@
       "tag": "skills",
       "issue_id": "I5",
       "source": "record_finding manual 2026-07-10"
+    }
+  ],
+  "retracted": [
+    {
+      "component": "backend",
+      "issue": "docs-mcp was not connected, forcing 7 WebFetch escapes to resolve the backend auth-token REST contract (create-user fields, headers, auth_tokens endpoint/response shape). The expected backend auth flow was not served by docs-mcp in this run.",
+      "tag": "docs-mcp",
+      "disposition": "docs-mcp-infra",
+      "reason": "HARNESS INFRA, not a docs-mcp content gap: docs-mcp server was not wired (mcp list=none), so its coverage of the backend auth-token flow is UNMEASURED. ACTION: wire docs-mcp env and re-run to measure. Low-confidence lead pending re-run: the backend auth-token REST flow was hard to assemble even from raw web docs (reconstructed from sibling source + a live curl).",
+      "original_source": null,
+      "issue_id": null
+    },
+    {
+      "component": "backend",
+      "issue": "Minor skill inconsistency: the skill uses the header name `apiKey` while the official docs use lowercase `apikey`. HTTP headers are case-insensitive so both work, but it is a needless divergence from the documented contract.",
+      "tag": "skills",
+      "disposition": "demoted-nit",
+      "reason": "Functionally zero \u2014 HTTP headers are case-insensitive so both work. Real but trivial skill/doc casing divergence; kept as a nit, not a blocker.",
+      "original_source": null,
+      "issue_id": null
+    },
+    {
+      "component": "web",
+      "issue": "The client wires CometChatUIKit.loginWithAuthToken against POST /api/cometchat/token, but that backend endpoint (the node/express token mint that expected_backend_auth requires) is only documented in the README and is not present/verifiable in the diff. Without it the auth-token flow is not demonstrably end-to-end; the agent self-scoped to web/ and never queried docs-mcp for the backend flow.",
+      "tag": "agent",
+      "disposition": "methodology-artifact",
+      "reason": "Half diff-visibility artifact (backend is a separate component), half a double-count of 'agent never queried docs-mcp for the backend flow' \u2014 already captured in the docs-mcp infra note. Trimmed.",
+      "original_source": null,
+      "issue_id": null
+    },
+    {
+      "component": "android",
+      "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
+      "tag": "skills",
+      "disposition": "superseded-by-A2",
+      "reason": "Stale intermediate conclusion ('code is actually correct') that the report itself reversed; fully replaced by A2 (header hides call buttons by default). Kept for audit trail.",
+      "original_source": "human-checkpoint-runtime",
+      "issue_id": null
+    },
+    {
+      "component": "ios",
+      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: iOS calling CONFIRMED WORKING in a live 2-client call (connected, media flowed, 'Dr. Gregory House has joined the conference'). iOS Swift UIKit initializes calling internally via UIKitSettings.enable(inAppIncomingCall:) \u2014 NO CometChatCalls.init needed. The cross-platform break was ANDROID-ONLY (missing CometChatCalls.init), now fixed. This iOS finding was a FALSE POSITIVE. (iOS ghost-call teardown \u2014 remote-end not dismissing the local ongoing-call UI \u2014 remains open.)",
+      "tag": "SDK",
+      "disposition": "retracted-false-positive",
+      "reason": "Self-invalidated: its own update confirms iOS calling CONNECTS live; the only real signal (android missing CometChatCalls.init) is captured by the android 'connecting' finding. Kept for audit trail.",
+      "original_source": "human-checkpoint-runtime",
+      "issue_id": null
+    },
+    {
+      "component": "ios",
+      "issue": "The core CometChat implementation files the summary/README describe (CometChatService, ConsultRoomView/ConsultChatView/ConsultCallBar/MessagesVC, Podfile, Podfile.lock, CometChatStarscream.podspec) are not present in the provided main...HEAD diff \u2014 only their call sites and Pods build wiring appear \u2014 so the actual integration code, symbol usage, and RBAC reflection cannot be directly reviewed; scoring leans on build_pass as ground truth.",
+      "tag": "agent",
+      "disposition": "methodology-artifact",
+      "reason": "Describes what main..HEAD showed the reviewer, not a skill/SDK defect \u2014 the files exist in the integration. Confidence caveat, not a finding.",
+      "original_source": null,
+      "issue_id": null
+    },
+    {
+      "component": "ios",
+      "issue": "The backend node/express CometChat auth-token minting endpoint (POST /cometchat/token) is only exercised from the client; the summary says the backend /cometchat/* routes already existed and were untouched, and they are absent from the diff, so the server-side token flow cannot be verified from the diff and docs-mcp gave no coverage for it.",
+      "tag": "docs-mcp",
+      "disposition": "docs-mcp-unmeasured",
+      "reason": "docs-mcp was not wired this run, so backend-token coverage is UNMEASURED, not confirmed-absent. Folded into the single docs-mcp infra note.",
+      "original_source": null,
+      "issue_id": null
     }
   ],
   "improvement_suggestions": [
@@ -452,27 +474,7 @@
   "coverage_gaps": [
     {
       "component": "backend",
-      "gap": "docs-mcp server was not connected in this environment (ToolSearch returned no docs-mcp tools; claude mcp list = none), so all 7 documentation lookups escaped to WebFetch of cometchat.com. No docs-mcp queries were exercised, so its coverage of the backend auth-token REST flow could not be measured here."
-    },
-    {
-      "component": "backend",
-      "gap": "Backend auth-token flow (POST /v3/users, PUT /v3/users/{uid}, POST /v3/users/{uid}/auth_tokens) had to be confirmed via raw web docs + a live curl rather than a first-class doc surface; this is the expected_backend_auth path and should be reliably retrievable from docs-mcp."
-    },
-    {
-      "component": "web",
-      "gap": "Backend node/express auth-token minting flow (createUser + auth-token via REST API key) was neither queried against docs-mcp nor implemented in the diff, despite expected_backend_auth=node being the crux of the integration."
-    },
-    {
-      "component": "android",
-      "gap": "Backend Node/Express auth-token minting flow was not sourced from docs-mcp (no queries issued); the agent reconstructed the contract by reading the sibling ../backend source. No evidence docs-mcp was consulted or failed for this, but the expected backend flow was not covered by any tool query."
-    },
-    {
-      "component": "ios",
-      "gap": "docs-mcp was not wired as an MCP tool in this environment, so no docs-mcp queries were issued; the agent fell back to the installed skills and the resolved SDK's own .swiftinterface as ground truth."
-    },
-    {
-      "component": "ios",
-      "gap": "No docs-mcp guidance was available for the node/express backend CometChat auth-token minting flow (expected_backend_auth = node); the backend /cometchat/* routes are claimed pre-existing and are not in the diff, so the token-minting flow could not be verified from docs-mcp or the diff."
+      "gap": "INFRA (not a content gap): docs-mcp was NOT wired this run (ToolSearch returned no docs-mcp tools; `claude mcp list` = none), so docs-mcp coverage of the backend auth-token flow is UNMEASURED \u2014 re-run with docs-mcp wired to actually measure it. Low-confidence lead to re-check then: the backend auth-token REST flow was hard to assemble even from raw web docs."
     }
   ],
   "hallucinations": [],
