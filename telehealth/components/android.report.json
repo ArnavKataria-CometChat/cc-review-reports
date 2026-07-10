@@ -90,8 +90,8 @@
         "tag": "skills"
       },
       {
-        "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.",
-        "tag": "SDK",
+        "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
+        "tag": "skills",
         "source": "human-checkpoint-runtime",
         "severity": "high",
         "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
@@ -101,6 +101,20 @@
         "tag": "agent",
         "source": "human-checkpoint-runtime",
         "severity": "critical"
+      },
+      {
+        "issue": "A2 \u2014 Android chat has NO way to INITIATE a call: CometChatMessageHeader hides the voice/video call buttons by DEFAULT in this UI Kit version, so the chat shipped with no call affordance. Confirmed live 2026-07-10; fixed by hideVoiceCallButton=false + hideVideoCallButton=false.",
+        "tag": "skills"
+      },
+      {
+        "issue": "A3 \u2014 Android app returns to the HOME screen after a call ENDS: CometChatOngoingCallActivity is launched in its own task (FLAG_ACTIVITY_NEW_TASK), so finishing it drops to the launcher (looks like the app 'exited'; process stays alive). Confirmed live 2026-07-10; fixed by re-foregrounding MainActivity (FLAG_ACTIVITY_REORDER_TO_FRONT) on CometChatCallEvent.CallEnded.",
+        "tag": "skills"
+      },
+      {
+        "issue": "A4 \u2014 Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.",
+        "tag": "skills",
+        "issue_id": "A4",
+        "source": "record_finding manual 2026-07-10"
       }
     ],
     "improvement_suggestions": [
@@ -137,6 +151,21 @@
       {
         "suggestion": "cometchat-android-v6-calls must require CometChatCalls.init(CallAppSettingsBuilder{appId,region}) after login AND show the full connect flow: host the ongoing/connecting call session UI and clear it on end/cancel/reject. Mounting only the incoming-call overlay + a listener that tracks a flag gives calls that ring/connect-forever but never establish.",
         "motivated_by": "Android calls stuck on 'connecting'; Calls SDK never initialized; cancel doesn't dismiss (human-verified runtime).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "State in the android calling skill that CometChatMessageHeader hides the voice/video call buttons by default and that hideVoiceCallButton=false + hideVideoCallButton=false (or a CometChatCallButtons component) is required to expose a call-initiate affordance.",
+        "motivated_by": "Android chat shipped with no call button because the header hides them by default (A2).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Warn in the android calling skill/docs that CometChatOngoingCallActivity runs in its own task and returns to HOME when a call ends, and show the FLAG_ACTIVITY_REORDER_TO_FRONT re-foreground workaround on CometChatCallEvent.CallEnded.",
+        "motivated_by": "Android app dropped to the home screen when a call ended (A3).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Kit should finish the ongoing-call activity on a remote 1:1 end; at minimum the docs must flag that onCallEndedMessageReceived (a no-op default) MUST be overridden for remote-end teardown.",
+        "motivated_by": "A4 \u2014 Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.",
         "target": "skills"
       }
     ]

@@ -38,10 +38,10 @@
     "cometchat-skills:cometchat-react-calls"
   ],
   "blocker_tags": {
-    "skills": 17,
+    "skills": 24,
     "docs-mcp": 2,
     "agent": 6,
-    "SDK": 4
+    "SDK": 3
   },
   "blockers": [
     {
@@ -136,8 +136,8 @@
     },
     {
       "component": "android",
-      "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.",
-      "tag": "SDK",
+      "issue": "Android chat shows no call buttons AT RUNTIME. CORRECTION (post-investigation): the code is actually correct \u2014 ConsultChatScreen renders CometChatMessageHeader (auto call buttons) + CometChat.addCallListener + the incoming-call overlay + the Calls SDK dependency. The buttons are absent because of the app-level calling layer (Voice & Video Calling not provisioned on the auto-created app, and/or the peer isn't online) \u2014 NOT an agent/skills code omission.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: root cause CONFIRMED \u2014 CometChatMessageHeader HIDES the voice/video call buttons by default (hideVoiceCallButton/hideVideoCallButton default true). The prior 'code is correct' note was wrong: no call-initiate affordance shipped. Fixed by setting both to false. Reclassified SDK -> skills.",
+      "tag": "skills",
       "source": "human-checkpoint-runtime",
       "severity": "high",
       "note": "reclassified agent->SDK after investigation (code correct; app-calling config)"
@@ -148,6 +148,23 @@
       "tag": "agent",
       "source": "human-checkpoint-runtime",
       "severity": "critical"
+    },
+    {
+      "component": "android",
+      "issue": "A2 \u2014 Android chat has NO way to INITIATE a call: CometChatMessageHeader hides the voice/video call buttons by DEFAULT in this UI Kit version, so the chat shipped with no call affordance. Confirmed live 2026-07-10; fixed by hideVoiceCallButton=false + hideVideoCallButton=false.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "A3 \u2014 Android app returns to the HOME screen after a call ENDS: CometChatOngoingCallActivity is launched in its own task (FLAG_ACTIVITY_NEW_TASK), so finishing it drops to the launcher (looks like the app 'exited'; process stays alive). Confirmed live 2026-07-10; fixed by re-foregrounding MainActivity (FLAG_ACTIVITY_REORDER_TO_FRONT) on CometChatCallEvent.CallEnded.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "A4 \u2014 Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.",
+      "tag": "skills",
+      "issue_id": "A4",
+      "source": "record_finding manual 2026-07-10"
     },
     {
       "component": "ios",
@@ -209,12 +226,33 @@
     },
     {
       "component": "ios",
-      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.",
+      "issue": "CROSS-PLATFORM CALLING BROKEN: an outbound voice/video call is CANCELLED on initiation and never connects to the peer, across ALL platform pairs (iOS\u2194Android, Android\u2194Web, Web\u2194iOS). Chat works on all three; only the call path fails. CORRECTION: an app-quit/crash on call-init was observed ONCE on both mobile apps but is NOT reproducible \u2014 the persistent, cross-platform behavior is call-cancelled-on-initiation, not a crash. Points to incomplete call session/ringing/listener (or presence/notification) setup rather than a permission crash \u2014 root cause TBD. UPDATE (user test): cross-platform ringing IS now delivered \u2014 the Android peer rings for ~1s then the call DROPS, and the web caller goes to a blank black full-screen overlay (call content never renders). So the call initiates + rings but FAILS TO CONNECT/establish the media session \u2014 root cause is the call session/answer handshake (session token / joinSession / accept flow), not calling-enablement.  [UPDATE 2026-07-10, confirmed via live 2-client Maestro/adb test]: iOS calling CONFIRMED WORKING in a live 2-client call (connected, media flowed, 'Dr. Gregory House has joined the conference'). iOS Swift UIKit initializes calling internally via UIKitSettings.enable(inAppIncomingCall:) \u2014 NO CometChatCalls.init needed. The cross-platform break was ANDROID-ONLY (missing CometChatCalls.init), now fixed. This iOS finding was a FALSE POSITIVE. (iOS ghost-call teardown \u2014 remote-end not dismissing the local ongoing-call UI \u2014 remains open.)",
       "tag": "SDK",
       "source": "human-checkpoint-runtime",
       "severity": "critical",
       "scope": "cross-platform (web, android, ios)",
       "note": "reclassified agent->SDK after investigation: call code wired correctly on all platforms; root cause is app-level Voice&Video enablement and/or both-peers-online requirement (config + test method), not code/skills"
+    },
+    {
+      "component": "ios",
+      "issue": "I3 \u2014 iOS in-app incoming-call popup is swallowed when the chat is opened as a modal (.sheet/.fullScreenCover): the UI Kit presents CometChatIncomingCall on the KEY-WINDOW ROOT, which is already presenting the modal, so UIKit rejects it ('...which is already presenting') and the inbound call is silently MISSED. Confirmed live 2-client; unified-log literal 'Attempt to present <CometChatUIKitSwift.CometChatIncomingCall'.",
+      "tag": "skills",
+      "issue_id": "I3",
+      "source": "record_finding manual 2026-07-10"
+    },
+    {
+      "component": "ios",
+      "issue": "I4 \u2014 iOS ghost call: the UI Kit's ongoing-call screen is NOT dismissed when the REMOTE party ends a 1:1 call. The SDK fires CometChatCallDelegate.onCallEndedMessageReceived locally, but the kit models the call as a conference and leaves a conference-of-one up with the timer running; only a manual hang-up clears it. Confirmed live.",
+      "tag": "skills",
+      "issue_id": "I4",
+      "source": "record_finding manual 2026-07-10"
+    },
+    {
+      "component": "ios",
+      "issue": "I5 \u2014 iOS: only the FIRST call per app launch connects. After ANY completed 1:1 call, the next call (incoming or outgoing) never transitions to the ongoing screen (sticks at 'Calling' / silently drops; the peer joins a conference-of-one); only a full app kill+relaunch recovers. CONTROL-PROVEN kit-internal: reproduced with call #1 ended by the kit's own red-button path and zero app call code running. iOS-only (Android joins call 2+).",
+      "tag": "skills",
+      "issue_id": "I5",
+      "source": "record_finding manual 2026-07-10"
     }
   ],
   "improvement_suggestions": [
@@ -327,6 +365,24 @@
       "target": "skills"
     },
     {
+      "component": "android",
+      "suggestion": "State in the android calling skill that CometChatMessageHeader hides the voice/video call buttons by default and that hideVoiceCallButton=false + hideVideoCallButton=false (or a CometChatCallButtons component) is required to expose a call-initiate affordance.",
+      "motivated_by": "Android chat shipped with no call button because the header hides them by default (A2).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Warn in the android calling skill/docs that CometChatOngoingCallActivity runs in its own task and returns to HOME when a call ends, and show the FLAG_ACTIVITY_REORDER_TO_FRONT re-foreground workaround on CometChatCallEvent.CallEnded.",
+      "motivated_by": "Android app dropped to the home screen when a call ended (A3).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Kit should finish the ongoing-call activity on a remote 1:1 end; at minimum the docs must flag that onCallEndedMessageReceived (a no-op default) MUST be overridden for remote-end teardown.",
+      "motivated_by": "A4 \u2014 Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.",
+      "target": "skills"
+    },
+    {
       "component": "ios",
       "suggestion": "In cometchat-ios-core, demote or remove the SwiftPM install path (or add an explicit warning that the cometchat-uikit-ios SwiftPM package fails to compile because it imports CometChatSDK/CometChatCardsSwift without declaring them) and lead with CocoaPods as the supported iOS install.",
       "motivated_by": "cometchat-ios-core presents a broken SwiftPM install as first-class, forcing a manual pivot to CocoaPods.",
@@ -372,6 +428,24 @@
       "component": "ios",
       "suggestion": "The calls skills (cometchat-react-calls / cometchat-ios / cometchat-android-v6-calls) should cover the END-TO-END cross-platform call session: outgoing-call flow, ringing/notification delivery, addCallListener wiring, and presence \u2014 so a call actually connects peer-to-peer instead of being cancelled on initiation. Include a cross-platform (web/native) interop test in the skill's testing guide.",
       "motivated_by": "Cross-platform calls cancelled on initiation; never connect across web/android/ios (human-verified runtime).",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Kit should present its incoming-call UI from the TOP-MOST presented view controller, not the key-window root, so it surfaces above any app modal (.sheet/.fullScreenCover).",
+      "motivated_by": "I3 \u2014 iOS in-app incoming-call popup is swallowed when the chat is opened as a modal (.sheet/.fullScreenCover): the UI Kit presents CometChatIncomingCall on the KEY-WINDOW ROOT, which is already presenting the modal, so UIKit rejects it ('...which is already presenting') and the inbound call is silently MISSED. Confirmed live 2-client; unified-log literal 'Attempt to present <CometChatUIKitSwift.CometChatIncomingCall'.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Kit should tear down its ongoing-call surface when the last remote participant leaves a 1:1 call (or on onCallEndedMessageReceived), not treat it as an open conference.",
+      "motivated_by": "I4 \u2014 iOS ghost call: the UI Kit's ongoing-call screen is NOT dismissed when the REMOTE party ends a 1:1 call. The SDK fires CometChatCallDelegate.onCallEndedMessageReceived locally, but the kit models the call as a conference and leaves a conference-of-one up with the timer running; only a manual hang-up clears it. Confirmed live.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Kit/UIKit must reset its call state after a completed session \u2014 audit CometChat.addCallListener/removeCallListener observer-ids and the CallingExtension reset so a second call re-registers and reaches the ongoing screen.",
+      "motivated_by": "I5 \u2014 iOS: only the FIRST call per app launch connects. After ANY completed 1:1 call, the next call (incoming or outgoing) never transitions to the ongoing screen (sticks at 'Calling' / silently drops; the peer joins a conference-of-one); only a full app kill+relaunch recovers. CONTROL-PROVEN kit-internal: reproduced with call #1 ended by the kit's own red-button path and zero app call code running. iOS-only (Android joins call 2+).",
       "target": "skills"
     }
   ],
