@@ -1,0 +1,165 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "marketplace",
+    "platform": "backend",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "backend/gin",
+    "backend": "go/gin",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-13T11:54:56.046417Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [],
+    "expected_variants": [],
+    "expected_backend_auth": "go",
+    "trigger_accuracy": false,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": false,
+    "feature_completeness_pct": null,
+    "scope_checklist": {
+      "auth_token_flow": null,
+      "rbac_user_mapping": null,
+      "push": null,
+      "theming": null,
+      "chat": null,
+      "calling": null
+    },
+    "diff_quality": {
+      "minimal_idiomatic": null,
+      "unrelated_refactors": null,
+      "secrets_committed": null,
+      "keys_in_env": null,
+      "notes": ""
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 5,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 624.5,
+    "tokens": {
+      "input": 14617,
+      "output": 37815
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "REST API create user and create auth token server side",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "REST API create group and add members guids",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "REST API create group kick members add members endpoint",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "REST API groups create group members OpenAPI",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      }
+    ],
+    "coverage_gaps": [],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": null,
+    "blockers": [],
+    "improvement_suggestions": [],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Skill/doc variant relied on**: No CometChat *skill* applied \u2014 the skills are all frontend UI-Kit families (React/Angular/Android/iOS/Flutter). Backend work is pure REST, so I used **docs-mcp** REST API pages: `/rest-api/authentication`, `/rest-api/users/create`, `/rest-api/auth-tokens/create`, `/rest-api/groups/create`, `/rest-api/groups/delete`, and `/calls/platform/user-sync`. Cross-checked against project memory (role\u2192`metadata.appRole`, token-bootstrap shape).\n- **Where docs were wrong/inconsistent**: The `/calls/platform/user-sync` page uses host `https://api-{region}.cometchat.io/v3` and header `apiKey`, while the authoritative `/rest-api/authentication` + every OpenAPI spec use the app-scoped host `https://{appId}.api-{region}.cometchat.io/v3` and lowercase header `apikey`. I followed the authoritative form; **validated live** (region `in`) \u2014 it works, the user-sync page's host is misleading.\n- **Candidate hallucinations**: None shipped unverified. Every endpoint, the `members.{participants,moderators}`+`owner` inline group shape, and the `data.authToken` response field were confirmed from OpenAPI specs and then **exercised against the real API** (user create/update, token mint, group create with 3 members + scopes, group delete \u2192 404).\n- **Doc-escapes (web search / guessing)**: None. All answers came from docs-mcp + memory + live API responses.\n- **Scope completed**: Backend fully done \u2014 auth-token flow, RBAC user mapping, 1:1 inquiry keying (via existing inquiry RBAC), dispute group create/delete, admin conversation purge, secrets in env only, build gate green. **Left to sibling components (out of scope for `backend/`)**: the actual frontend SDK login/conversation/calling UI in web/android/ios, which consume `POST /cometchat/token`.\n\nNote: one unrelated env issue \u2014 a `PostToolUse` hook (`./hooks/log_tool.py`) is configured but the file doesn't exist, so every tool call logs a harmless \"No such file\" error. It didn't affect this work; you may want to fix or remove that hook.",
+    "review_status": "review-failed: ValueError: no JSON object in judge output",
+    "known_issues_registry_ref": "ki-2026-07-13.1",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}

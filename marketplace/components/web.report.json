@@ -1,0 +1,138 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "marketplace",
+    "platform": "web",
+    "covers": null,
+    "skills_ref": "main",
+    "docs_mcp_ref": "main",
+    "frontend": "web/react",
+    "backend": "go/gin",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-13T11:54:57.859352Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat"
+    ],
+    "expected_variants": [
+      "react"
+    ],
+    "expected_backend_auth": "go",
+    "trigger_accuracy": false,
+    "variant_selection": false,
+    "false_triggers": [],
+    "missed_triggers": [
+      "react"
+    ]
+  },
+  "integration_outcome": {
+    "build_pass": false,
+    "runtime_success": false,
+    "feature_completeness_pct": null,
+    "scope_checklist": {
+      "auth_token_flow": null,
+      "rbac_user_mapping": null,
+      "push": null,
+      "theming": null,
+      "chat": null,
+      "calling": null
+    },
+    "diff_quality": {
+      "minimal_idiomatic": null,
+      "unrelated_refactors": null,
+      "secrets_committed": null,
+      "keys_in_env": null,
+      "notes": ""
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 0,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 314.6,
+    "tokens": {
+      "input": 13920,
+      "output": 19856
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": null,
+    "blockers": [
+      {
+        "issue": "Web CometChat chat/calling UI is MISSING from the committed feature-branch source. The running docker web build serves a full working chat (CometChat conversations, 1:1 message header with voice/video call buttons, message list/composer \u2014 .cometchat-* DOM), but git 'diff main..feature/cometchat-integration -- web' shows ONLY package.json/lock, api/endpoints.ts, api/types.ts, cometchat/errors.ts, cometchat/ids.ts changed \u2014 NO chat component, NO @cometchat/chat-uikit-react import, NO /messages route, NO CometChatMessages/MessageHeader anywhere in web/src (34 tsx/ts files, all grep-clean). So the deliverable web app was built from an uncommitted/lost version; rebuilding from HEAD yields the SDK deps + token endpoint but NO chat. Likely lost when the Phase B re-integration hit the usage limit and resumed with --components android,ios (per HANDOFF), skipping a web re-commit. Additionally, the running build's dispute-GROUP conversation header has NO call buttons (group voice/video calling absent on web) though 1:1 does.",
+        "tag": "agent",
+        "issue_id": "W5",
+        "source": "record_finding manual 2026-07-14"
+      },
+      {
+        "issue": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
+        "tag": "agent",
+        "issue_id": "W6",
+        "source": "record_finding manual 2026-07-14"
+      },
+      {
+        "issue": "CometChat UIKit React v6 renders every component functional-but-UNSTYLED (no message bubbles, avatars/icons/call-buttons collapse to blank boxes, composer looks broken) when the app does not import the kit's design-token stylesheet '@cometchat/chat-uikit-react/css-variables.css'. The chat is fully operable (messages send/receive, calls place) so the failure is purely visual and silent.",
+        "tag": "skills",
+        "issue_id": "W9",
+        "source": "record_finding manual 2026-07-14"
+      },
+      {
+        "issue": "Calls between clients fail immediately as 'Call Busy' / disconnect the instant they are initiated when EITHER side has a STALE/ghost active call in the SDK (a call surface that did not tear down, an app killed mid-call, or a lingering session). CometChat reports that user BUSY across ALL their sessions, so every new incoming call auto-rejects as 'Call Busy'. Neither the web nor the mobile UIKit clears a stale active call on (re)login, so a user can get permanently stuck 'busy' until the SDK state is reset. Aggravated by the same user being logged into multiple clients \u2014 any one busy/ghost session makes the user busy everywhere.",
+        "tag": "skills",
+        "issue_id": "X2",
+        "source": "record_finding manual 2026-07-14"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "The integration agent must COMMIT the web chat UI it builds (the CometChat React components + /messages route). Verify Phase B completeness by rebuilding each component from committed source and re-running Gate 3 \u2014 a runtime green against a stale docker build hides an uncommitted integration. Also wire GROUP call buttons on the web message header (group voice/video), not just 1:1.",
+        "motivated_by": "Web CometChat chat/calling UI is MISSING from the committed feature-branch source. The running docker web build serves a full working chat (CometChat conversations, 1:1 message header with voice/video call buttons, message list/composer \u2014 .cometchat-* DOM), but git 'diff main..feature/cometchat-integration -- web' shows ONLY package.json/lock, api/endpoints.ts, api/types.ts, cometchat/errors.ts, cometchat/ids.ts changed \u2014 NO chat component, NO @cometchat/chat-uikit-react import, NO /messages route, NO CometChatMessages/MessageHeader anywhere in web/src (34 tsx/ts files, all grep-clean). So the deliverable web app was built from an uncommitted/lost version; rebuilding from HEAD yields the SDK deps + token endpoint but NO chat. Likely lost when the Phase B re-integration hit the usage limit and resumed with --components android,ios (per HANDOFF), skipping a web re-commit. Additionally, the running build's dispute-GROUP conversation header has NO call buttons (group voice/video calling absent on web) though 1:1 does.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Re-integrate + COMMIT the web CometChat chat/calling UI (see W5) and ensure the web UIKit settings are initialized for calling (the 'uiKitSettings not available' console error must be gone). Then re-run Gate 6 (gate6/run.py one_to_one_voice) to confirm android<->web 1:1 voice actually connects. If it still fails with a committed, correctly-configured web build, escalate to a CometChat calls-SDK / cross-platform WebRTC interop investigation.",
+        "motivated_by": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "The web UIKit integration skill/quickstart MUST state that '@cometchat/chat-uikit-react/css-variables.css' has to be imported once app-wide (before local overrides); without it the entire kit UI is unstyled though functional. Add it to the minimal 'render your first component' snippet, not just a theming appendix.",
+        "motivated_by": "CometChat UIKit React v6 renders every component functional-but-UNSTYLED (no message bubbles, avatars/icons/call-buttons collapse to blank boxes, composer looks broken) when the app does not import the kit's design-token stylesheet '@cometchat/chat-uikit-react/css-variables.css'. The chat is fully operable (messages send/receive, calls place) so the failure is purely visual and silent.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "The calling skill/quickstart should show clearing a stale active call on connect (CometChat.clearActiveCall() after login) and warn that getActiveCall() persisting from a prior/ungracefully-ended session makes the user permanently BUSY (every call auto-rejects 'Call Busy'). Also document multi-session busy semantics (a user is busy if ANY session has an active call) and that call-end/reject events must be reconciled against getActiveCall().sessionID before tearing down UI.",
+        "motivated_by": "Calls between clients fail immediately as 'Call Busy' / disconnect the instant they are initiated when EITHER side has a STALE/ghost active call in the SDK (a call surface that did not tear down, an app killed mid-call, or a lingering session). CometChat reports that user BUSY across ALL their sessions, so every new incoming call auto-rejects as 'Call Busy'. Neither the web nor the mobile UIKit clears a stale active call on (re)login, so a user can get permanently stuck 'busy' until the SDK state is reset. Aggravated by the same user being logged into multiple clients \u2014 any one busy/ghost session makes the user busy everywhere.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "The calls SDK `init` takes `CallAppSettings` (builder-based), matching gotcha [X1]'s `CallAppSettingsBuilder`. Let me confirm that builder API.\nAll APIs verified against the installed v6.5.3 / calls v5.0.1 types. `CometChatCalls.CallAppSettingsBuilder().setAppId().setRegion().build()` \u2192 `CometChatCalls.init(...)` satisfies **[X1]**. Now I'll write the integration. Let me track the work.\nI'll proceed directly to writing files (planning is complete). Starting with the cometchat module.\nNow wire the backend token endpoint into the API layer (idiomatic \u2014 one function per route), then the session helper.\nNow the dispute GUID helper (mirrors the backend's `DisputeGUID`), then the provider.\nYou've hit your session limit \u00b7 resets 5:40pm (Asia/Calcutta)",
+    "review_status": "review-failed: ValueError: no JSON object in judge output",
+    "known_issues_registry_ref": "ki-2026-07-13.1",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  }
+}
