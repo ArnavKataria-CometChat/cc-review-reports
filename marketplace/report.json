@@ -1,0 +1,437 @@
+{
+  "use_case": "marketplace",
+  "batch_id": "2026-07-08-baseline",
+  "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+  "platforms": [
+    "backend",
+    "web",
+    "android",
+    "ios"
+  ],
+  "repo": "ArnavKataria-CometChat/cc-review-marketplace",
+  "pr_url": null,
+  "headline": {
+    "build_pass": "1/4",
+    "trigger_accuracy": "2/4",
+    "variant_selection": "3/4",
+    "feature_completeness_avg": 82.5,
+    "ease_avg": 2.0,
+    "docs_escapes_total": 0,
+    "retries_total": 15,
+    "hallucinations_total": 0,
+    "tokens": {
+      "input": 66977,
+      "output": 269540
+    }
+  },
+  "skills_exercised": [
+    "cometchat-skills:cometchat",
+    "cometchat-skills:cometchat-android-v6-builder-settings",
+    "cometchat-skills:cometchat-android-v6-calls",
+    "cometchat-skills:cometchat-android-v6-core",
+    "cometchat-skills:cometchat-android-v6-events",
+    "cometchat-skills:cometchat-android-v6-kotlin-components",
+    "cometchat-skills:cometchat-ios"
+  ],
+  "blocker_tags": {
+    "agent": 6,
+    "skills": 18,
+    "SDK": 1,
+    "harness-error": 2,
+    "docs-mcp": 1
+  },
+  "blockers": [
+    {
+      "component": "web",
+      "issue": "Web CometChat chat/calling UI is MISSING from the committed feature-branch source. The running docker web build serves a full working chat (CometChat conversations, 1:1 message header with voice/video call buttons, message list/composer \u2014 .cometchat-* DOM), but git 'diff main..feature/cometchat-integration -- web' shows ONLY package.json/lock, api/endpoints.ts, api/types.ts, cometchat/errors.ts, cometchat/ids.ts changed \u2014 NO chat component, NO @cometchat/chat-uikit-react import, NO /messages route, NO CometChatMessages/MessageHeader anywhere in web/src (34 tsx/ts files, all grep-clean). So the deliverable web app was built from an uncommitted/lost version; rebuilding from HEAD yields the SDK deps + token endpoint but NO chat. Likely lost when the Phase B re-integration hit the usage limit and resumed with --components android,ios (per HANDOFF), skipping a web re-commit. Additionally, the running build's dispute-GROUP conversation header has NO call buttons (group voice/video calling absent on web) though 1:1 does.",
+      "tag": "agent",
+      "issue_id": "W5",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "web",
+      "issue": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
+      "tag": "agent",
+      "issue_id": "W6",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "web",
+      "issue": "CometChat UIKit React v6 renders every component functional-but-UNSTYLED (no message bubbles, avatars/icons/call-buttons collapse to blank boxes, composer looks broken) when the app does not import the kit's design-token stylesheet '@cometchat/chat-uikit-react/css-variables.css'. The chat is fully operable (messages send/receive, calls place) so the failure is purely visual and silent.",
+      "tag": "skills",
+      "issue_id": "W9",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "web",
+      "issue": "Calls between clients fail immediately as 'Call Busy' / disconnect the instant they are initiated when EITHER side has a STALE/ghost active call in the SDK (a call surface that did not tear down, an app killed mid-call, or a lingering session). CometChat reports that user BUSY across ALL their sessions, so every new incoming call auto-rejects as 'Call Busy'. Neither the web nor the mobile UIKit clears a stale active call on (re)login, so a user can get permanently stuck 'busy' until the SDK state is reset. Aggravated by the same user being logged into multiple clients \u2014 any one busy/ghost session makes the user busy everywhere.",
+      "tag": "skills",
+      "issue_id": "X2",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "web",
+      "issue": "W6-ROOT \u2014 web calls can never connect under Vite: @cometchat/chat-uikit-react v6.5.3 dist/index.js resolves the calls SDK via a bare CommonJS require() inside its ESM bundle (try{mb=require('@cometchat/calls-sdk-javascript')}catch{} \u2192 pb=mb?.CometChatCalls). In a Vite/browser ESM build require is undefined, the throw is swallowed, pb stays null, and CometChatUIKit.enableCalling() SILENTLY no-ops \u2014 CometChatCalls.init() never runs, no RTCPeerConnection is ever constructed (Gate 6 CC_WEBRTC_STATS: {ice_events:[],pcs:[]}), answered calls drop to 'Missed Call'. This is the layer BELOW W5: even with CometChatUIKit.init() correctly wired, calling is dead on any Vite app without build.commonjsOptions.transformMixedEsModules.",
+      "tag": "SDK",
+      "issue_id": "W6-ROOT",
+      "source": "record_finding manual 2026-07-15"
+    },
+    {
+      "component": "web",
+      "issue": "G6-HOLLOW \u2014 every single-client Gate 6 choreography step was a silent no-op for the project's entire history: YAML 1.1 parses the bare key 'on:' as boolean True, so step.get('on') returned None, targets resolved empty, and do/await steps 'passed' without executing (steps_run still counted them). No harness run ever actually PLACED or ANSWERED a call \u2014 only both: steps ran. Prior Gate 6 verdicts (including the W6 'signals+answers but never connects' framing and the 'web<->web fails identically so it is environmental' control-run conclusion) were built on hollow steps plus human manual repro. Fixed 2026-07-15: load_choreography normalizes the on: key; the orchestrator now RAISES on a target-less do/await step (anti-hollow guard); self_test fixture added. All pre-fix Gate 6 result.json files should be treated as connect-evidence-free.",
+      "tag": "harness-error",
+      "issue_id": "G6-HOLLOW",
+      "source": "record_finding manual 2026-07-15"
+    },
+    {
+      "component": "web",
+      "issue": "W11 \u2014 web calls wedge the buyer/seller pair BUSY after any abnormal call end: the integration registers NO CometChat.addCallListener (onIncomingCallCancelled / onCallEndedMessageReceived) and never calls CometChat.endCall(sessionId) \u2014 grep of web/src returns 0 hits. A client that disappears mid-call (tab close, crash, killed test browser) leaves the session ongoing server-side; every subsequent call to either party is instantly auto-rejected 'Call Busy' (caller) / 'Missed Call' (callee) until the zombie expires minutes later. connection.ts's clearActiveCall-on-login is a double no-op (null after fresh login; local-only anyway). Web analog of catalog I4 (iOS) and A4 (Android) ghost calls. Diagnosed AUTONOMOUSLY by the Gate 6 debug agent (verdict diagnosed, confidence high, evidence: webweb_CLEAN connected vs webweb_HARD insta-busy on identical code + its own expiry repro).",
+      "tag": "skills",
+      "issue_id": "W11",
+      "source": "record_finding manual 2026-07-15"
+    },
+    {
+      "component": "web",
+      "issue": "G6-ISOLATION \u2014 Gate 6 cross-run contamination: orchestrator._teardown() closed browsers WITHOUT ending an active call (and headless browser close skips beforeunload, so app-side guards cannot fire). Any run that connected a call and tore down mid-call left a zombie CometChat session server-side; the buyer/seller pair then auto-rejected every subsequent call 'Call Busy', failing the NEXT run at place_voice_call. Diagnosed AUTONOMOUSLY by the Gate 6 debug agent (verdict harness_bug, confidence high \u2014 correctly routed AWAY from the app ledger per MV-3, its clean-state re-run passed green proving no app regression). Fixed: teardown now hang_up-s every executor before stop.",
+      "tag": "harness-error",
+      "issue_id": "G6-ISOLATION",
+      "source": "record_finding manual 2026-07-15"
+    },
+    {
+      "component": "android",
+      "issue": "auto_facts.build_pass=false with retry_count=3, yet the INTEGRATION SUMMARY claims a passing build gate. The delivered diff does not compile/build as-is; the overclaim of a green build gate is itself a defect and the root cause of the failure was not surfaced.",
+      "tag": "agent"
+    },
+    {
+      "component": "android",
+      "issue": "Kotlin-Views message-header call-button visibility API is misdocumented: skills/gotcha say hideVoiceCallButton/hideVideoCallButton (Compose-only); the Views CometChatMessageHeader has no such setters and requires setVoiceCallButtonVisibility(int)/setVideoCallButtonVisibility(int). Copying the documented names verbatim would not compile.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "calls skill W3 tells integrators to stub 4 legacy com.cometchat.calls.* classes including RTCUser, but RTCUser ships in calls-sdk-android 5.0.1, so a 4th stub triggers a dex Duplicate class failure; only 3 stubs are correct.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "Contradictory Calls-init guidance: builder-settings claims setEnableCalling(true) auto-inits the Calls SDK while gotcha X1 requires an explicit CometChatCalls.init, leaving integrators to guess. The agent worked around it by doing both.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "Call-lifecycle APIs used (CometChatEvents.callEvents Flow with CometChatCallEvent.CallEnded, plus CometChat.clearActiveCall) are asserted-verified only via javap and are not corroborated by any docs-mcp result; given the failed build they are a plausible unverified surface and lack authoritative documentation.",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "android",
+      "issue": "Incoming-call overlay covers the conversation header (android). CometChatIncomingCall (UIKit v6.0.3) was embedded as an always-mounted match_parent overlay on the assumption it 'renders nothing until a call arrives'; it actually renders its Accept/Decline chrome unconditionally (no bound call), permanently covering the message header \u2014 peer identity, back button, and the voice/video call buttons \u2014 so a call can never be started from the thread. Verified with a freshly-provisioned user in a zero-history thread (0 incoming-call events in logcat) and with both parties of a 1:1 seeing it simultaneously. FIXED: keep the widget GONE and gate visibility on an incoming-call StateFlow<Call?> (set on onIncomingCallReceived, cleared on cancel/reject/accept/end) \u2014 the pattern the telehealth build used.",
+      "tag": "skills",
+      "issue_id": "A6",
+      "source": "record_finding manual 2026-07-13"
+    },
+    {
+      "component": "android",
+      "issue": "Placing a call crashes with 'Please call the CometChat.init() method ... preferably in the onCreate() method of the application class'. The app initializes the CometChat SDK lazily (ChatManager.ensureReady, on first chat open) instead of in Application.onCreate \u2014 MarketplaceApp.onCreate only calls ChatManager.install(), never CometChat/UIKit init. CometChat's calling UI runs in a SEPARATE PROCESS where the SDK was never initialized, so a UIKit view crashes: CometChatMessageComposer.onDetachedFromWindow -> CometChatMessageComposerViewModel.endTyping -> CometChat.getLoggedInUser -> SQLiteManager.getInstance throws (RuntimeException), taking down the call process. Confirmed: crash PID differed from the main app PID. FIX: cache the non-secret App ID + Region on first backend token fetch and call CometChatUIKit.init + CometChatCalls.init in Application.onCreate (runs in every process) so the SDK is initialized wherever a CometChat view mounts.",
+      "tag": "skills",
+      "issue_id": "A7",
+      "source": "record_finding manual 2026-07-13"
+    },
+    {
+      "component": "android",
+      "issue": "Android calling is impossible from the UI: the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar (no window insets applied). The header's voice/video call buttons sit in the top ~130px region where the system status-bar window consumes touches, so the buttons are untappable and a call can never be initiated. Confirmed live: tapping the voice button (bounds [891,45][954,108]) did nothing \u2014 no call initiated, an ONLINE 2nd client received no incoming call, no OutgoingCall event. After applying android:fitsSystemWindows=true to the ChatActivity root (header moves below the status bar, button now [891,181][954,244]), the SAME tap initiates the call: logcat 'Call Initiated Successfully', CometChatCallActivity (outgoing screen) mounts ringing the peer, and hang-up returns to the app. FIXED.",
+      "tag": "skills",
+      "issue_id": "A8",
+      "source": "record_finding manual 2026-07-13"
+    },
+    {
+      "component": "android",
+      "issue": "Group/conference calls stay stuck on 'connecting' (spinner never resolves) because CometChatCalls.joinSession runs before the calls CORE (CometChatCalls.init) is initialized in the current session, throwing 'Please call the CometChatCalls.init() method ...'. Root cause: (1) the eager per-process init bailed whenever the CHAT SDK was already initialized, never (re)initing the calls core; (2) the guard CometChatUIKit.isCallsSDKInitialized() reads true after UIKit setEnableCalling(true) even when CometChatCalls.init was never actually called this session, so the init was skipped. 1:1 calls work (they go through the chat SDK) which masks it \u2014 only the group/conference joinSession path exposes it.",
+      "tag": "skills",
+      "issue_id": "A9",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "android",
+      "issue": "1:1 (and group) call UI breaks after minimise+reopen: the call renders correctly at first, but pressing home enters Picture-in-Picture (the UIKit declares CometChatCallActivity/CometChatOngoingCallActivity with supportsPictureInPicture=true), which resizes the React-Native/Jitsi call surface to the small PiP window; because those activities also declare configChanges=screenSize|screenLayout|orientation they handle the resize themselves and the RN surface never re-measures on return to full screen. Result: the whole call UI (participant tiles + controls) stays crammed in a narrow left strip with the rest of the screen black, while the call is actually still connected.",
+      "tag": "skills",
+      "issue_id": "A10",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "android",
+      "issue": "Placing or accepting a call intermittently 'redirects to the chats page': the app's own A3/A4 workaround (re-foreground MainActivity when a call ends) ran on ANY 'call ended' event/message with no session check, so a stale end message from an OLD unanswered call (e.g. the other side reloading their tab cancels its ring) arriving right as a NEW call starts brought the app task (top = Conversations) in front of the just-opened call screen. Compounding: the kit call activity's onUserLeaveHint then pushed the live call into PiP, and on return its RN/Jitsi surface stayed at PiP size (narrow-strip UI, A10).",
+      "tag": "agent",
+      "issue_id": "A11",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "android",
+      "issue": "A12 \u2014 android in-call screen is a BLANK GRAY surface on FIRST entry: the call IS connected (audio live, human CP2 verification 2026-07-15) but the ongoing-call UI renders nothing; pressing BACK and re-entering the call loads the UI correctly. Inverse-symptom sibling of A10 (which renders fine first and breaks after minimize/PiP resize) \u2014 both point at CometChatOngoingCallActivity surface sizing/attach: the call surface appears to mount before its WebView/SurfaceView receives a valid layout pass, and only a re-entry relayout paints it. Element-presence asserts pass \u2014 A6/A8 visual-defect class, catchable only by the screenshot judge or a human.",
+      "tag": "skills",
+      "issue_id": "A12",
+      "source": "record_finding manual 2026-07-15",
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "medium",
+        "root_cause": "The in-call gray-on-first-mount is most consistent with an emulator host-GL first-frame compositing artifact, not an app/skills/SDK defect. emulator-5554 renders via GLES->Metal translation on the Apple M4 host (SurfaceFlinger 'GLES: Android Emulator OpenGL ES Translator (Apple M4), OpenGL ES 3.0 (4.1 Metal)'; ro.hardware.egl=emulation; SkiaGL HWUI; vulkan_renderengine:false) and the compositor stalls catastrophically during the call (logcat _reports/debug_a12/logcat_call.txt: 'EGL_emulation app_time_stats avg=900.92ms max=29040.01ms' pid 21964, and system frames up to avg=60007.90ms). The Com",
+        "used_reference_impl": false,
+        "dossier": "_reports/debug_a12/",
+        "operator_counter_evidence": "2026-07-15 live experiment: forced recomposite via rotation (portrait->landscape->portrait) during the gray call \u2014 surface relaid out but STILL flat gray (/tmp/a12_rotated.png). A stalled compositor would repaint on rotation; only activity RECREATION (back+reopen) paints. Points at first-mount content-attach bug in the ongoing-call surface, not (only) the emulator GLES stall. Agent verdict (harness_bug, medium conf) retained for audit; real-device check still worthwhile."
+      },
+      "pending_checkpoint_review": true,
+      "review_question": "Optional: one real-device call to fully rule the emulator in/out; rotation counter-evidence already suggests app/kit first-mount bug"
+    },
+    {
+      "component": "ios",
+      "issue": "Build does not pass in the target environment (auto build_pass=false) after 7 retries, despite the INTEGRATION SUMMARY asserting a 'clean build and launch smoke'. Final integration state does not compile/link, and verification was over-reported.",
+      "tag": "agent"
+    },
+    {
+      "component": "ios",
+      "issue": "[I7] iOS skill gotcha is wrong for CometChatSDK 4.1.6: it states CometChatStarscream is statically linked and an empty stub resolves the launch crash. In reality CometChatSDK.framework references a real Starscream symbol (WebSocketEvent.disconnected) at runtime; the empty stub only advances the crash from 'Library not loaded' to 'Symbol not found'. The real fix (pull CometChatStarscream 1.0.2 xcframework from CometChat CDN) is undocumented in skills.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "Calls skill is stale versus installed CometChatUIKitSwift 5.1.16 / CometChatSDK: it documents CallAppSettingsBuilder and generateToken(authToken:) which are deprecated/removed, forcing the agent to discover the current set(appID:)/set(region:)/generateToken(sessionID:) API against the .swiftinterface.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "iOS dispute-GROUP chat is unreachable: tapping 'Open group chat & call' in ReportDetailView pops back to the Disputes queue instead of pushing the group ChatScreen \u2014 so group chat + group voice/video calling can never be opened on iOS. Reproduced 4x live (support login -> Disputes -> open a FLAGGED report whose inquiry is escalated -> scroll to the 'Dispute group' section -> tap 'Open group chat & call' -> lands back on the Disputes queue, two levels up). The 1:1 'Conversation' NavigationLink (InquiryDetailView -> ChatScreen(target:.user)) pushes correctly, so maestro/XCUITest CAN follow this app's NavigationLinks \u2014 the group link (ChatScreen(target:.group(guid:'dispute-<id>'))) specifically fails. Likely a SwiftUI navigation issue (the conditionally-rendered 'if inquiry.flagged' section's NavigationLink auto-popping on a data refresh, or the group ChatScreen throwing on connect). Root cause not yet isolated; behavior (group unreachable) is confirmed.",
+      "tag": "agent",
+      "issue_id": "I8",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "ios",
+      "issue": "iOS chat stuck on 'Connecting to chat\u2026' after a cold login: ChatService.connect ran inside SwiftUI .task blocks, and the CometChat SDK init/login use withCheckedThrowingContinuation which does NOT observe Swift Task cancellation. When the hosting view updated (cancelling its .task) while suspended in a continuation, the continuation was orphaned \u2014 the await never returned, phase stuck at .connecting forever, POST /cometchat/token logged as cancelled.",
+      "tag": "skills",
+      "issue_id": "I9",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "ios",
+      "issue": "iOS CometChatMessageList renders skeleton loaders forever when a 1:1/group conversation is opened after a cold login: login succeeds (phase .ready), getUser/getGroup resolve (header+composer render), and the conversation LIST loads \u2014 but the message-HISTORY fetch never completes, so the thread shows shimmer placeholders indefinitely. The same accounts/conversations load fine on web. Re-setting the subject, adding a ConnectionListener re-fetch, and calling messageList.reload() do NOT recover it.",
+      "tag": "skills",
+      "issue_id": "I10",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "ios",
+      "issue": "iOS CometChatMessageList shows skeleton loaders forever (no timeout/error) when the conversation SUBJECT is set AFTER the list is already on-screen. The list fires its history fetch once, when it enters the window, ONLY if a subject (user/group) is already set. A common integration \u2014 create the list, add it to the view, then set the subject in an async getUser/getGroup callback \u2014 misses that window and never fetches, so the thread hangs on skeletons even though the socket is connected (calls deliver fine). Setting the subject synchronously from the known id before the view appears fixes it.",
+      "tag": "skills",
+      "issue_id": "I11",
+      "source": "record_finding manual 2026-07-14"
+    },
+    {
+      "component": "ios",
+      "issue": "I12 \u2014 iOS call connect is INTERMITTENT (human CP2 verification 2026-07-15): connects on some attempts, then subsequent attempts fail until 'later'. Pattern matches the session-lifecycle wedge family: after any abnormal call end the buyer/seller pair is BUSY server-side until the zombie session expires (web analog W11; catalog I4/A4). iOS clears the stale active call at connect (local-only, commit 6a8f467) but registers no persistent call-ended listener and never calls CometChat.endCall when the app backgrounds/terminates mid-call.",
+      "tag": "skills",
+      "issue_id": "I12",
+      "source": "record_finding manual 2026-07-15"
+    }
+  ],
+  "retracted": [],
+  "improvement_suggestions": [
+    {
+      "component": "web",
+      "suggestion": "The integration agent must COMMIT the web chat UI it builds (the CometChat React components + /messages route). Verify Phase B completeness by rebuilding each component from committed source and re-running Gate 3 \u2014 a runtime green against a stale docker build hides an uncommitted integration. Also wire GROUP call buttons on the web message header (group voice/video), not just 1:1.",
+      "motivated_by": "Web CometChat chat/calling UI is MISSING from the committed feature-branch source. The running docker web build serves a full working chat (CometChat conversations, 1:1 message header with voice/video call buttons, message list/composer \u2014 .cometchat-* DOM), but git 'diff main..feature/cometchat-integration -- web' shows ONLY package.json/lock, api/endpoints.ts, api/types.ts, cometchat/errors.ts, cometchat/ids.ts changed \u2014 NO chat component, NO @cometchat/chat-uikit-react import, NO /messages route, NO CometChatMessages/MessageHeader anywhere in web/src (34 tsx/ts files, all grep-clean). So the deliverable web app was built from an uncommitted/lost version; rebuilding from HEAD yields the SDK deps + token endpoint but NO chat. Likely lost when the Phase B re-integration hit the usage limit and resumed with --components android,ios (per HANDOFF), skipping a web re-commit. Additionally, the running build's dispute-GROUP conversation header has NO call buttons (group voice/video calling absent on web) though 1:1 does.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Re-integrate + COMMIT the web CometChat chat/calling UI (see W5) and ensure the web UIKit settings are initialized for calling (the 'uiKitSettings not available' console error must be gone). Then re-run Gate 6 (gate6/run.py one_to_one_voice) to confirm android<->web 1:1 voice actually connects. If it still fails with a committed, correctly-configured web build, escalate to a CometChat calls-SDK / cross-platform WebRTC interop investigation.",
+      "motivated_by": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "The web UIKit integration skill/quickstart MUST state that '@cometchat/chat-uikit-react/css-variables.css' has to be imported once app-wide (before local overrides); without it the entire kit UI is unstyled though functional. Add it to the minimal 'render your first component' snippet, not just a theming appendix.",
+      "motivated_by": "CometChat UIKit React v6 renders every component functional-but-UNSTYLED (no message bubbles, avatars/icons/call-buttons collapse to blank boxes, composer looks broken) when the app does not import the kit's design-token stylesheet '@cometchat/chat-uikit-react/css-variables.css'. The chat is fully operable (messages send/receive, calls place) so the failure is purely visual and silent.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "The calling skill/quickstart should show clearing a stale active call on connect (CometChat.clearActiveCall() after login) and warn that getActiveCall() persisting from a prior/ungracefully-ended session makes the user permanently BUSY (every call auto-rejects 'Call Busy'). Also document multi-session busy semantics (a user is busy if ANY session has an active call) and that call-end/reject events must be reconciled against getActiveCall().sessionID before tearing down UI.",
+      "motivated_by": "Calls between clients fail immediately as 'Call Busy' / disconnect the instant they are initiated when EITHER side has a STALE/ghost active call in the SDK (a call surface that did not tear down, an app killed mid-call, or a lingering session). CometChat reports that user BUSY across ALL their sessions, so every new incoming call auto-rejects as 'Call Busy'. Neither the web nor the mobile UIKit clears a stale active call on (re)login, so a user can get permanently stuck 'busy' until the SDK state is reset. Aggravated by the same user being logged into multiple clients \u2014 any one busy/ghost session makes the user busy everywhere.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "UIKit should load the calls SDK via a proper optional dynamic import (or document the required Vite config: build.commonjsOptions.transformMixedEsModules=true + optimizeDeps.include) \u2014 the silent catch makes calling fail with zero console evidence",
+      "motivated_by": "W6-ROOT \u2014 web calls can never connect under Vite: @cometchat/chat-uikit-react v6.5.3 dist/index.js resolves the calls SDK via a bare CommonJS require() inside its ESM bundle (try{mb=require('@cometchat/calls-sdk-javascript')}catch{} \u2192 pb=mb?.CometChatCalls). In a Vite/browser ESM build require is undefined, the throw is swallowed, pb stays null, and CometChatUIKit.enableCalling() SILENTLY no-ops \u2014 CometChatCalls.init() never runs, no RTCPeerConnection is ever constructed (Gate 6 CC_WEBRTC_STATS: {ice_events:[],pcs:[]}), answered calls drop to 'Missed Call'. This is the layer BELOW W5: even with CometChatUIKit.init() correctly wired, calling is dead on any Vite app without build.commonjsOptions.transformMixedEsModules.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "The web skill must wire the call-lifecycle listener (clearActiveCall on cancelled/ended) and endCall-on-beforeunload alongside enableCalling \u2014 the docs cover placing calls but not releasing sessions, which is the difference between demo-works and production-works",
+      "motivated_by": "W11 \u2014 web calls wedge the buyer/seller pair BUSY after any abnormal call end: the integration registers NO CometChat.addCallListener (onIncomingCallCancelled / onCallEndedMessageReceived) and never calls CometChat.endCall(sessionId) \u2014 grep of web/src returns 0 hits. A client that disappears mid-call (tab close, crash, killed test browser) leaves the session ongoing server-side; every subsequent call to either party is instantly auto-rejected 'Call Busy' (caller) / 'Missed Call' (callee) until the zombie expires minutes later. connection.ts's clearActiveCall-on-login is a double no-op (null after fresh login; local-only anyway). Web analog of catalog I4 (iOS) and A4 (Android) ghost calls. Diagnosed AUTONOMOUSLY by the Gate 6 debug agent (verdict diagnosed, confidence high, evidence: webweb_CLEAN connected vs webweb_HARD insta-busy on identical code + its own expiry repro).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "In the message-header skill (cometchat-android-v6-kotlin-components) and the /ui-kit/android/v6/message-header doc, split the call-button visibility API by kit: document setVoiceCallButtonVisibility(int)/setVideoCallButtonVisibility(int) for Kotlin Views and reserve hideVoiceCallButton/hideVideoCallButton for Compose only.",
+      "motivated_by": "Kotlin-Views message-header call-button visibility API is misdocumented",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Correct the calls skill W3 stub list to exactly 3 classes (CometChatRTCView, RTCReceiver, RTCCallback) and explicitly warn NOT to stub RTCUser because it ships in calls-sdk-android 5.0.x and a stub collides at dex time.",
+      "motivated_by": "calls skill W3 prescribes stubbing RTCUser which causes Duplicate class",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Reconcile the builder-settings skill and gotcha X1 with a single authoritative statement on whether UIKitSettings.setEnableCalling(true) initializes the Calls SDK or an explicit CometChatCalls.init is required for the Views kit.",
+      "motivated_by": "Contradictory Calls-init guidance between builder-settings and gotcha X1",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Add a docs-mcp page for the Go/gin backend auth-token flow (server-side createUser + mint auth token with the REST API key, returning appId/region/uid/authToken) so the expected backend auth is documentation-backed rather than left to sibling runs.",
+      "motivated_by": "No docs-mcp coverage for the Go backend auth-token flow",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "android",
+      "suggestion": "android-v6-kotlin skill/docs for CometChatIncomingCall must state the widget does NOT self-gate: show it only while a call is ringing (drive visibility from a call-state flow); never leave it mounted as a persistent overlay or it covers the header.",
+      "motivated_by": "Incoming-call overlay covers the conversation header (android). CometChatIncomingCall (UIKit v6.0.3) was embedded as an always-mounted match_parent overlay on the assumption it 'renders nothing until a call arrives'; it actually renders its Accept/Decline chrome unconditionally (no bound call), permanently covering the message header \u2014 peer identity, back button, and the voice/video call buttons \u2014 so a call can never be started from the thread. Verified with a freshly-provisioned user in a zero-history thread (0 incoming-call events in logcat) and with both parties of a 1:1 seeing it simultaneously. FIXED: keep the widget GONE and gate visibility on an incoming-call StateFlow<Call?> (set on onIncomingCallReceived, cleared on cancel/reject/accept/end) \u2014 the pattern the telehealth build used.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Skill/docs must warn that CometChat's calling UI runs in a separate process and the SDK MUST be initialized in Application.onCreate (every process), not lazily after login. When App ID/Region come from a backend, cache them (non-secret) and re-init synchronously on process start; only the auth-token login stays deferred.",
+      "motivated_by": "Placing a call crashes with 'Please call the CometChat.init() method ... preferably in the onCreate() method of the application class'. The app initializes the CometChat SDK lazily (ChatManager.ensureReady, on first chat open) instead of in Application.onCreate \u2014 MarketplaceApp.onCreate only calls ChatManager.install(), never CometChat/UIKit init. CometChat's calling UI runs in a SEPARATE PROCESS where the SDK was never initialized, so a UIKit view crashes: CometChatMessageComposer.onDetachedFromWindow -> CometChatMessageComposerViewModel.endTyping -> CometChat.getLoggedInUser -> SQLiteManager.getInstance throws (RuntimeException), taking down the call process. Confirmed: crash PID differed from the main app PID. FIX: cache the non-secret App ID + Region on first backend token fetch and call CometChatUIKit.init + CometChatCalls.init in Application.onCreate (runs in every process) so the SDK is initialized wherever a CometChat view mounts.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "android skill/docs must warn: when hosting the CometChat message header on a bare (no-Toolbar) screen, apply top system-window insets (fitsSystemWindows or WindowInsets padding) so the header \u2014 and its voice/video call buttons \u2014 is NOT under the status bar. Edge-to-edge is default on Android 15+, so without insets the call buttons land in the status-bar touch region and calling is impossible even though the buttons are visible.",
+      "motivated_by": "Android calling is impossible from the UI: the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar (no window insets applied). The header's voice/video call buttons sit in the top ~130px region where the system status-bar window consumes touches, so the buttons are untappable and a call can never be initiated. Confirmed live: tapping the voice button (bounds [891,45][954,108]) did nothing \u2014 no call initiated, an ONLINE 2nd client received no incoming call, no OutgoingCall event. After applying android:fitsSystemWindows=true to the ChatActivity root (header moves below the status bar, button now [891,181][954,244]), the SAME tap initiates the call: logcat 'Call Initiated Successfully', CometChatCallActivity (outgoing screen) mounts ringing the peer, and hang-up returns to the app. FIXED.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Skill must make explicit that the Calls SDK core (CometChatCalls.init) is a SEPARATE, session/process-scoped init from both the Chat SDK and UIKit's setEnableCalling, and is REQUIRED before joinSession (group/conference calls). Guidance should NOT gate CometChatCalls.init on isCallsSDKInitialized()/isSDKInitialized() (those can read true without the calls core being live); CometChatCalls.init is idempotent, so re-assert it on every connect/app-start. Provide a group-call quickstart that shows this, since 1:1 calling hides the gap.",
+      "motivated_by": "Group/conference calls stay stuck on 'connecting' (spinner never resolves) because CometChatCalls.joinSession runs before the calls CORE (CometChatCalls.init) is initialized in the current session, throwing 'Please call the CometChatCalls.init() method ...'. Root cause: (1) the eager per-process init bailed whenever the CHAT SDK was already initialized, never (re)initing the calls core; (2) the guard CometChatUIKit.isCallsSDKInitialized() reads true after UIKit setEnableCalling(true) even when CometChatCalls.init was never actually called this session, so the init was skipped. 1:1 calls work (they go through the chat SDK) which masks it \u2014 only the group/conference joinSession path exposes it.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "The UIKit's built-in call activities enable Picture-in-Picture but the React-Native/Jitsi call surface does not re-layout when leaving PiP (compounded by configChanges suppressing an activity recreate), leaving the call UI broken full-screen. Skill/kit should either (a) fix the PiP<->fullscreen re-measure of the call surface, or (b) document that apps must disable PiP on the call activities (manifest tools:replace supportsPictureInPicture=false) until fixed. Ship a working PiP sample or an explicit opt-out note. AMENDED 2026-07-14: the manifest opt-out (tools:replace supportsPictureInPicture=false) is NOT viable \u2014 the kit's onUserLeaveHint calls enterPictureInPictureMode() UNCONDITIONALLY, so with PiP disabled a home-press during a call throws IllegalStateException (CometChatCallActivity.kt:287) and CRASHES the app. Kit must (a) guard enterPictureInPictureMode (isPiP-allowed check / try-catch) and (b) re-measure the RN/Jitsi surface on PiP exit. Working app-side mitigation: keep PiP enabled + post a decorView.requestLayout() when the call activity resumes.",
+      "motivated_by": "1:1 (and group) call UI breaks after minimise+reopen: the call renders correctly at first, but pressing home enters Picture-in-Picture (the UIKit declares CometChatCallActivity/CometChatOngoingCallActivity with supportsPictureInPicture=true), which resizes the React-Native/Jitsi call surface to the small PiP window; because those activities also declare configChanges=screenSize|screenLayout|orientation they handle the resize themselves and the RN surface never re-measures on return to full screen. Result: the whole call UI (participant tiles + controls) stays crammed in a narrow left strip with the rest of the screen black, while the call is actually still connected.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Workarounds that re-foreground/tear down on call-end signals MUST verify the ended sessionId matches CometChat.getActiveCall() and never yank focus while a call is live. The skill's call-lifecycle guidance should ship this guard pattern; end/cancel events for stale sessions are normal traffic, not exceptional.",
+      "motivated_by": "Placing or accepting a call intermittently 'redirects to the chats page': the app's own A3/A4 workaround (re-foreground MainActivity when a call ends) ran on ANY 'call ended' event/message with no session check, so a stale end message from an OLD unanswered call (e.g. the other side reloading their tab cancels its ring) arriving right as a NEW call starts brought the app task (top = Conversations) in front of the just-opened call screen. Compounding: the kit call activity's onUserLeaveHint then pushed the live call into PiP, and on return its RN/Jitsi surface stayed at PiP size (narrow-strip UI, A10).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Root-cause the first-mount layout race in the android calls surface (force a post-attach requestLayout/invalidate or delay joinSession until the surface reports non-zero size); skill should ship the workaround",
+      "motivated_by": "A12 \u2014 android in-call screen is a BLANK GRAY surface on FIRST entry: the call IS connected (audio live, human CP2 verification 2026-07-15) but the ongoing-call UI renders nothing; pressing BACK and re-entering the call loads the UI correctly. Inverse-symptom sibling of A10 (which renders fine first and breaks after minimize/PiP resize) \u2014 both point at CometChatOngoingCallActivity surface sizing/attach: the call surface appears to mount before its WebView/SurfaceView receives a valid layout pass, and only a re-entry relayout paints it. Element-presence asserts pass \u2014 A6/A8 visual-defect class, catchable only by the screenshot judge or a human.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Rewrite the [I7] Starscream gotcha in the ios-core/ios-calls skill to version-gate: for CometChatSDK 4.1.x, CometChatStarscream is a real dynamic dependency and must be added as an explicit pod/xcframework from the CometChat CDN (include the library.cometchat.io xcframework URL); an empty stub does NOT fix the launch crash. This is the primary cause of the launch/build failure.",
+      "motivated_by": "[I7] Starscream gotcha is wrong for CometChatSDK 4.1.6 (empty stub yields 'Symbol not found').",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Update the iOS calls skill to replace deprecated CallAppSettingsBuilder and generateToken(authToken:) with the current set(appID:)/set(region:) builder and generateToken(sessionID:), and note that the kit-default enable(inAppIncomingCall:true) path auto-renders incoming/ongoing UI (no ccShowOngoingCall).",
+      "motivated_by": "Calls skill is stale versus installed SDK 5.1.16 (deprecated CallAppSettingsBuilder/generateToken(authToken:)).",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Fix the ios-uikit-quickstart docs bundle to stop referencing a composite CometChatMessages/MessagesVC and instead document composing CometChatMessageHeader + CometChatMessageList + CometChatMessageComposer, and add a Go/gin backend auth-token generation example so backend auth has doc coverage.",
+      "motivated_by": "Quickstart bundle references a non-existent all-in-one messages VC and there is no docs-mcp coverage for the Go backend auth-token flow.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "ios",
+      "suggestion": "The iOS ReportDetailView 'Open group chat & call' NavigationLink must reliably push the group ChatScreen. Move the destination out of the conditionally-rendered flagged section (or use a value-based navigationDestination / NavigationPath) so a data refresh from status changes doesn't auto-pop it, and verify the group ChatScreen connects (support IS a group member). Confirm group chat + group voice/video calling are reachable on iOS.",
+      "motivated_by": "iOS dispute-GROUP chat is unreachable: tapping 'Open group chat & call' in ReportDetailView pops back to the Disputes queue instead of pushing the group ChatScreen \u2014 so group chat + group voice/video calling can never be opened on iOS. Reproduced 4x live (support login -> Disputes -> open a FLAGGED report whose inquiry is escalated -> scroll to the 'Dispute group' section -> tap 'Open group chat & call' -> lands back on the Disputes queue, two levels up). The 1:1 'Conversation' NavigationLink (InquiryDetailView -> ChatScreen(target:.user)) pushes correctly, so maestro/XCUITest CAN follow this app's NavigationLinks \u2014 the group link (ChatScreen(target:.group(guid:'dispute-<id>'))) specifically fails. Likely a SwiftUI navigation issue (the conditionally-rendered 'if inquiry.flagged' section's NavigationLink auto-popping on a data refresh, or the group ChatScreen throwing on connect). Root cause not yet isolated; behavior (group unreachable) is confirmed.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Skill must warn that CometChat callback-based SDK calls wrapped in withCheckedThrowingContinuation are NOT cancellation-aware, so driving login/connect directly from a SwiftUI .task (which cancels on view updates) can orphan the continuation and hang the app on 'connecting'. Guidance: own the connect in a service-held Task (fire-and-forget, idempotent), not the view's task; or wrap continuations with withTaskCancellationHandler.",
+      "motivated_by": "iOS chat stuck on 'Connecting to chat\u2026' after a cold login: ChatService.connect ran inside SwiftUI .task blocks, and the CometChat SDK init/login use withCheckedThrowingContinuation which does NOT observe Swift Task cancellation. When the hosting view updated (cancelling its .task) while suspended in a continuation, the continuation was orphaned \u2014 the await never returned, phase stuck at .connecting forever, POST /cometchat/token logged as cancelled.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "The iOS UIKit message list can hang on skeleton loaders indefinitely (no timeout, no error surfaced) if its history fetch does not complete after a cold connect, while conversations + getUser succeed. Kit should (a) surface a fetch timeout/error state instead of infinite skeletons and (b) document a reliable re-fetch/recovery API \u2014 messageList.reload() did not re-arm the fetch. Needs a real-device repro to confirm vs simulator networking.",
+      "motivated_by": "iOS CometChatMessageList renders skeleton loaders forever when a 1:1/group conversation is opened after a cold login: login succeeds (phase .ready), getUser/getGroup resolve (header+composer render), and the conversation LIST loads \u2014 but the message-HISTORY fetch never completes, so the thread shows shimmer placeholders indefinitely. The same accounts/conversations load fine on web. Re-setting the subject, adding a ConnectionListener re-fetch, and calling messageList.reload() do NOT recover it.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "The message-list skill must state that CometChatMessageList.set(user:)/set(group:) MUST be called BEFORE the view enters the window (e.g. synchronously in viewDidLoad from a User(uid:)/Group(guid:)) \u2014 setting the subject later, in an async user-fetch callback, misses the one-shot fetch trigger and the list stays on skeleton loaders with no error. Kit should also re-fetch when the subject is set post-appearance, or surface a timeout instead of infinite skeletons.",
+      "motivated_by": "iOS CometChatMessageList shows skeleton loaders forever (no timeout/error) when the conversation SUBJECT is set AFTER the list is already on-screen. The list fires its history fetch once, when it enters the window, ONLY if a subject (user/group) is already set. A common integration \u2014 create the list, add it to the view, then set the subject in an async getUser/getGroup callback \u2014 misses that window and never fetches, so the thread hangs on skeletons even though the socket is connected (calls deliver fine). Setting the subject synchronously from the known id before the view appears fixes it.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "iOS skill must wire the CallListener lifecycle (clearActiveCall on cancelled/ended) plus best-effort endCall on scenePhase background/termination \u2014 the same session-release gap as W11 on web",
+      "motivated_by": "I12 \u2014 iOS call connect is INTERMITTENT (human CP2 verification 2026-07-15): connects on some attempts, then subsequent attempts fail until 'later'. Pattern matches the session-lifecycle wedge family: after any abnormal call end the buyer/seller pair is BUSY server-side until the zombie session expires (web analog W11; catalog I4/A4). iOS clears the stale active call at connect (local-only, commit 6a8f467) but registers no persistent call-ended listener and never calls CometChat.endCall when the app backgrounds/terminates mid-call.",
+      "target": "skills"
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "component": "android",
+      "gap": "No docs-mcp query or content covers the Go/gin backend auth-token flow (createUser + mint auth token via REST key server-side) despite expected_backend_auth=go; backend was reportedly done by sibling runs with no evidenced docs support."
+    },
+    {
+      "component": "android",
+      "gap": "docs-mcp message-header page did not disambiguate Kotlin-Views setters from Compose props for the call buttons, forcing the agent to fall back to javap on the AAR."
+    },
+    {
+      "component": "ios",
+      "gap": "Recorded docs-mcp query text is empty in the auto facts (telemetry gap) \u2014 only the ios-uikit-quickstart bundle fetch is visible from the summary, so per-query relevance cannot be precisely assessed."
+    },
+    {
+      "component": "ios",
+      "gap": "No docs-mcp coverage/query for the Go/gin backend auth-token generation flow (expected_backend_auth=go); backend auth was implemented without visible doc support."
+    },
+    {
+      "component": "ios",
+      "gap": "The real CometChatStarscream 1.0.2 xcframework CDN URL needed to fix the launch crash was not in skills or docs-mcp; the agent recovered it from the local CocoaPods podspec cache."
+    }
+  ],
+  "hallucinations": [],
+  "components": {
+    "backend": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": null,
+      "ease": null
+    },
+    "web": {
+      "build_pass": false,
+      "variant_ok": false,
+      "completeness": null,
+      "ease": null
+    },
+    "android": {
+      "build_pass": false,
+      "variant_ok": true,
+      "completeness": 85,
+      "ease": 2
+    },
+    "ios": {
+      "build_pass": false,
+      "variant_ok": true,
+      "completeness": 80,
+      "ease": 2
+    }
+  }
+}
