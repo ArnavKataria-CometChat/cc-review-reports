@@ -1,0 +1,546 @@
+{
+  "use_case": "edtech",
+  "batch_id": "2026-07-08-baseline",
+  "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+  "platforms": [
+    "backend",
+    "web",
+    "android",
+    "ios"
+  ],
+  "repo": "ArnavKataria-CometChat/cc-review-edtech",
+  "pr_url": "https://github.com/ArnavKataria-CometChat/cc-review-edtech/pull/1",
+  "headline": {
+    "build_pass": "3/4",
+    "trigger_accuracy": "4/4",
+    "variant_selection": "4/4",
+    "feature_completeness_avg": 87.5,
+    "ease_avg": 3.5,
+    "docs_escapes_total": 1,
+    "retries_total": 9,
+    "hallucinations_total": 0,
+    "tokens": {
+      "input": 110225,
+      "output": 366334
+    }
+  },
+  "skills_exercised": [
+    "cometchat-skills:cometchat",
+    "cometchat-skills:cometchat-android-v5-calls",
+    "cometchat-skills:cometchat-android-v5-components",
+    "cometchat-skills:cometchat-android-v5-core",
+    "cometchat-skills:cometchat-android-v5-features",
+    "cometchat-skills:cometchat-android-v5-troubleshooting",
+    "cometchat-skills:cometchat-angular-calls",
+    "cometchat-skills:cometchat-ios-calls",
+    "cometchat-skills:cometchat-ios-components",
+    "cometchat-skills:cometchat-ios-core"
+  ],
+  "blocker_tags": {
+    "agent": 3,
+    "docs-mcp": 1,
+    "skills": 16,
+    "harness-error": 7,
+    "SDK": 7
+  },
+  "blockers": [
+    {
+      "component": "backend",
+      "issue": "The RBAC scope 'parent reads own child's threads' and 'admin audits' is not actually implemented \u2014 the backend only returns can_send/can_call=false flags plus conversation identifiers, and relies on the client honoring them. Parents/admins are never added to the 1:1/group conversations and no read proxy exists, so there is no real mechanism by which they can read the threads. The read-only audit half of the RBAC requirement is effectively unimplemented.",
+      "tag": "agent"
+    },
+    {
+      "component": "backend",
+      "issue": "The idempotent 'already exists' handling depends on error-code strings the agent could not confirm from docs (ERR_UID_ALREADY_EXISTS, ERR_ALREADY_JOINED). If the real codes differ, repeat provisioning/enroll will raise CometChatError instead of being treated as success (fails loudly rather than silently, but breaks the intended idempotency).",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "issue": "E-ROLES \u2014 CometChat user provisioning fails on a fresh app: the integrated backend assigns role: student/tutor/parent/admin on POST /users, but custom roles must be CREATED (POST /roles) before any user can reference them \u2014 on a virgin CometChat app every user-provision call fails 'Failed to validate the data sent with the request' and the entire chat bootstrap is dead. Neither the skill nor docs mention role pre-creation; the integration agent wired RBAC roles it had no way to provision.",
+      "tag": "skills",
+      "issue_id": "E-ROLES",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "backend",
+      "issue": "E-GROUP-NOPROV \u2014 group sessions have NO CometChat group, so ALL group chat + group voice/video calling is dead (half the calling-spec matrix). Two layers: (1) the seed (api/management/commands/seed.py:245) creates group Sessions directly via Session.objects.create(kind='group',...) and NEVER calls cometchat.ensure_group \u2014 provisioning only runs in the API create/enroll views, which the seed bypasses; (2) SessionChatView returns the descriptor with group_guid='session-<id>' and can_call=true WITHOUT verifying the CometChat group exists. Verified: GET /v3/groups/session-1 -> 'group with guid session-1 does not exist', 0 members. Opening a seeded masterclass room loads a non-existent group -> group chat/call fails. All ensure_group/add_group_member calls are wrapped in cometchat.safe() (errors swallowed), so even API-created groups fail silently.",
+      "tag": "skills",
+      "issue_id": "E-GROUP-NOPROV",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "web",
+      "issue": "Calls ring but never connect (android/web) \u2014 CometChatCalls.init() is never called (WebRTC SDK uninitialized) and no ongoing-call session is wired (**/*.{ts,tsx,js,jsx,kt,swift}: required call-site `CometChatCalls\\.init\\(` not found)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "X1",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": true
+    },
+    {
+      "component": "web",
+      "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "W1",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "Gate 3 web runtime smoke drove the PRE-INTEGRATION baseline build, not the integrated one. The reviewer builds two images per component \u2014 ccrev-edtech-web:base (Phase A) and :cc (Phase B integrated). verify_component\u2192verify_docker_build (lib/verify.py:100-101) only `docker build`s + tags the :cc image; it never runs it. _smoke_web (lib/smoke.py:434-462) then reuses whatever container already answers on the smoke port via the _http_reachable short-circuit (lib/smoke.py:439) and only boots via compose when NOT reachable. A stale ccrev-edtech-web:base container (image created 2026-07-15T09:22Z, before the Phase B integrate commit c3f7add at Jul-15 23:38 IST) was left running on :8091, so Gate 3 tested the Phase A app which has no chat. Confirmed: at failure login succeeds but the sidebar has no Messages link (screenshot) and the served bundle has no 'cometchat'; the backend :base container 404s on /cometchat/config (a Phase B route). Running the existing ccrev-edtech-web:cc image and re-running the identical flow advances past the Messages nav-click (chat.mjs:25) to waitForSelector('.cometchat-list-item') (chat.mjs:26), proving the integrated app has the Messages nav and chat surface \u2014 only my pointing it at the stale :base backend blocked it further. The W1 (scroll-clip) fingerprint is a misattribution: the tested build never reaches any chat surface.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "rendered edtech/web/chat.mjs against live :8091 (:base) \u2192 red, reproduces W_RUNTIME nav-timeout; then against ccrev-edtech-web:cc on :8099 \u2192 advanced past the Messages nav-click to the chat-list wait (integrated app correct)",
+          "result": "red"
+        },
+        "registry_draft": "",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W1.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "web",
+      "issue": "Web chat container dimensions do not match the visible chat area \u2014 custom height overrides fight the kit's own __body{height:100%} CSS and collapse the body (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "W4",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "Gate-3 web smoke ran against a stale pre-Phase-B docker container, not the integration under test. The deployed ccrev-edtech-web image was created 2026-07-15T09:20:46Z (~9h before the Phase-B integrate commit c3f7add at 2026-07-15T18:08Z); its bundle contains 0 occurrences of 'cometchat' and 0 of 'Messages'/'/messages' (it is the phase-A baseline build). lib/smoke.py:_smoke_web reuses any container already reachable at base_url without rebuilding ('if not _http_reachable(base_url)'), so a leftover phase-A container at :8091 served the Phase-B smoke. Because that bundle has no Messages nav / no /messages route, page.click('a:has-text(\"Messages\")') times out (the W_RUNTIME evidence). Proof the integrated code is correct: a fresh `ng build` of HEAD (ca99ddb), served on a scratch port, renders the Messages link, the click succeeds and routes to /messages, and the CometChat bundle loads. The backend container is stale identically (source backend/api/urls.py:48 defines /cometchat/config but the deployed backend returns 404). The W4 fingerprint is a misattribution \u2014 the flow never reaches the chat surface, so the CSS-height detector never ran.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "chat.mjs flow (login -> click Messages) against a fresh `ng build` of HEAD served on :8199",
+          "result": "green"
+        },
+        "registry_draft": "",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W4.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "web",
+      "issue": "Incoming-call overlay mis-placed OR a broad [class*=\"incoming-call\"] selector hijacks message-bubble call-log classes into a full-screen overlay (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "W2",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "The Gate 3 integrate web smoke ran against the STALE Phase A baseline container. lib/smoke.py:434-439 reuses an already-running instance whenever base_url is HTTP-reachable and only does `docker compose up -d --build` when unreachable. The `ccrev-edtech-web:base` container (serving main-M66UPDU4.js, zero cometchat) was hot on :8091 since 2026-07-15T09:22Z \u2014 ~9h BEFORE the Phase B integration commit c3f7add (2026-07-15 23:38 IST / 18:08Z) \u2014 so the smoke reused it and never rebuilt. The served bundle has no /messages route (it redirects to /home), no 'Messages' nav link, and no CometChat components, so calling.mjs:25 `page.click('a:has-text(\"Messages\")')` finds 0 elements and times out on every rerun. The integrated source is correct: routes.ts:44-48 defines /messages, shell.component.ts:21 adds the Messages nav for students, and styles.scss:311-335 uses the exact `.cometchat-incoming-call` class (explicitly avoiding the broad [class*] selector). The W2 fingerprint is a misattribution \u2014 there is no overlay because the served app has no CometChat at all.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "Playwright repro against live http://localhost:8091 (login student@demo.edu -> inspect sidebar + /messages route)",
+          "result": "red"
+        },
+        "registry_draft": "draft/web-smoke-reuses-stale-baseline-container",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W2.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "web",
+      "issue": "In-call surface is half-screen or a blank black overlay \u2014 broad [class*=\"outgoing-call\"]/[class*=\"ongoing-call\"] selector regression and/or missing full-viewport ongoing-call container (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "W3",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "Gate-3 web smoke drove a STALE Phase-A baseline container, not the integrated build. `verify_docker_build` (lib/verify.py:98) builds `ccrev-edtech-web:cc` (89.3MB, with the CometChat kit) but nothing in the harness deploys it; `_smoke_web` (lib/smoke.py:432-435) reuses any app already reachable at base_url and only boots a container when the port is UNREACHABLE. The Phase-A `ccrev-edtech-web:base` container (up 10h) kept answering on localhost:8091 serving main-M66UPDU4.js (2.6KB, no 'Messages'/'cometchat'), so calling.mjs's `page.click('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')` timed out at 25s (W_RUNTIME) because the baseline nav is only Home/Find Tutors/My Sessions. Verified: the integrated `:cc` build renders the Messages nav (NAV_LINKS includes 'Messages') and the click succeeds; the classifier then mis-fingerprinted the nav-entry timeout as W3 (in-call surface).",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "deployed ccrev-edtech-web:cc on :8099 and ran the exact failing flow step (login student@demo.edu -> click Messages nav); on :cc the click succeeds (CLICKED_MESSAGES_OK, nav shows Messages), on the live :base:8091 it times out at 25s",
+          "result": "green"
+        },
+        "registry_draft": "",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W3.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "web",
+      "issue": "Parent/admin read-only observation is not actually implemented: the UI Kit only renders the logged-in user's own conversations, so a parent 'reading own child's threads' or an admin auditing a session sees a static read-only placeholder note (observerReason()) instead of the real thread. The use-case RBAC requirement (parent reads own child's threads; admin audits) is therefore only partially met \u2014 the send/call gate is enforced, but the actual observation surface is a stub.",
+      "tag": "SDK"
+    },
+    {
+      "component": "web",
+      "issue": "The Messages inbox relies on an undocumented/unverified auto-wiring: <cometchat-conversations> with no (onItemClick)/(itemClick) handler is assumed to set active conversation state read back via ChatStateService.activeUser()/activeGroup(). If ChatStateService does not auto-populate active conversation on click (no explicit binding is present), clicking a conversation never opens a thread and the inbox thread pane stays empty. This integration path is not exercised by the auto-caught W-issues.",
+      "tag": "agent"
+    },
+    {
+      "component": "web",
+      "issue": "G6-FORKBOMB \u2014 Gate 6 heal layer recursed into a process fork bomb (observed: 764 gate6.run processes). Chain: a failed choreography triggers _heal_layer (gate6/run.py:202) which spawns a diagnose-only debug agent; the agent's dossier instructs 'reproduce by running the repro command' = 'python3 -m gate6.run <chor>'; that re-invocation fails, triggers ITS OWN heal layer, spawns ANOTHER agent, ad infinitum. spawn_cap_per_stage did NOT bound it because the cap only limits one in-process debug_clusters call \u2014 the recursion is across separate OS processes, each with a fresh cap. Fixed: CC_GATE6_NO_HEAL env guard (a debug-agent-launched gate6.run runs the choreography for evidence but never re-heals), propagated from lib/debug_agent to any child gate6.run; self_test fixture added.",
+      "tag": "harness-error",
+      "issue_id": "G6-FORKBOMB",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "web",
+      "issue": "E-WEB-CALLS \u2014 edtech Angular web app crashes at CometChat bootstrap (chat AND calling dead): 'TypeError: Cannot read properties of null (reading CallAppSettingsBuilder)' at cometchat.service.ts:74. CometChatUIKitCalls, re-exported from @cometchat/chat-uikit-angular, resolves to NULL at runtime under Angular's production esbuild bundle \u2014 the calls SDK is a UMD that the Angular UIKit re-export does not preserve through bundling. Because bootstrap throws before login, the ENTIRE chat surface never mounts (Gate 6 one_to_one_chat fails at step 0 open_chat). Angular analog of marketplace W6-ROOT (Vite). Skill/docs give no working Angular calls-init pattern.",
+      "tag": "skills",
+      "issue_id": "E-WEB-CALLS",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "web",
+      "issue": "E-NOCONV \u2014 a booked tutoring session does not provision a CometChat conversation: a student with 2 upcoming + 3 completed sessions sees 'No Conversations Yet' in Messages. The app models sessions in its own DB but never creates the corresponding CometChat 1:1 thread (or group for group-sessions), so the conversation only appears after a manual first message. Users expect their session's chat to be reachable from the session, not to have to cold-start a thread.",
+      "tag": "skills",
+      "issue_id": "E-NOCONV",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "web",
+      "issue": "G6-KITDOM \u2014 the Gate 6 web executor (gate6/executors/web_driver.mjs) was written against the REACT CometChat kit (marketplace) and does not cleanly drive the ANGULAR kit (edtech). Concrete DOM differences found live: nav label 'Messages' vs 'Chat'; conversation rows are .cometchat-paginated-list__item / .cometchat-conversation-item (Angular) vs .cometchat-list-item (React); the <cometchat-message-header> host is display:contents (no box, never 'visible' to Playwright) vs a real visible div. Partial cross-kit fixes applied (nav param, dynamic row selector, attached+composer header check), but per-app row-open still needs tuning. This is a HARNESS limitation, NOT an app finding \u2014 recorded harness-error so it never contaminates the skills ledger.",
+      "tag": "harness-error",
+      "issue_id": "G6-KITDOM",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "web",
+      "issue": "E-WEB-CALLCSS \u2014 web call UI renders unstyled/broken: the app imports only @cometchat/chat-uikit-angular/styles/css-variables.css (design tokens) but NOT the calls SDK's component stylesheet @cometchat/calls-sdk-javascript/dist/index.css, so the outgoing/ongoing/incoming call surfaces have no layout CSS (visible but broken). W9-class (unstyled kit) but specific to the calling components. Neither the skill nor docs list the calls index.css as a required import.",
+      "tag": "skills",
+      "issue_id": "E-WEB-CALLCSS",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "android",
+      "issue": "Calls ring but never connect (android/web) \u2014 CometChatCalls.init() is never called (WebRTC SDK uninitialized) and no ongoing-call session is wired (**/*.{ts,tsx,js,jsx,kt,swift}: required call-site `CometChatCalls\\.init\\(` not found)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "X1",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android chat shows no calling option \u2014 CometChatMessageHeader (auto call buttons) / call listener / incoming-call overlay absent (RELATED to X1 app-calling root cause) (**/*.kt: required call-site `CometChatMessageHeader` not found)",
+      "tag": "SDK",
+      "auto_caught": true,
+      "issue_id": "A1",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android chat has no call-initiate option \u2014 CometChatMessageHeader hides the voice/video call buttons by default (**/*.kt: required pattern `hideVoiceCallButton\\s*=\\s*false|hideVideoCallButton\\s*=\\s*false|CometChatCallButtons` absent)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A2",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android app returns to HOME after a call ends \u2014 the UI Kit's ongoing-call activity finishes in its own task and nothing re-foregrounds the app (**/*.kt: required pattern `FLAG_ACTIVITY_REORDER_TO_FRONT` absent)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A3",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android ghost call \u2014 the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (**/*.kt: required pattern `onCallEndedMessageReceived` absent)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A4",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android chat shows no calling option \u2014 CometChatMessageHeader (auto call buttons) / call listener / incoming-call overlay absent (RELATED to X1 app-calling root cause) (Maestro assertion failed [chat.yaml] on android: \nWaiting for flows to complete...\n[Failed] edtech-android-chat-smoke (31s) (Assertion is false: \"Chat.*|Messages\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "SDK",
+      "auto_caught": true,
+      "issue_id": "A1",
+      "tier": "runtime",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android ghost call \u2014 the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] edtech-android-calling-smoke (33s) (Assertion is false: \"Chat.*|Messages\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A4",
+      "tier": "runtime",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android incoming-call overlay covers the conversation header \u2014 CometChatIncomingCall (UIKit v6) mounted as an always-on overlay renders its Accept/Decline chrome with no bound call, hiding the header (peer name, back, voice/video call buttons) so a call can never be started (Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] edtech-android-calling-smoke (33s) (Assertion is false: \"Chat.*|Messages\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A6",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "Android call buttons untappable \u2014 the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated (Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] edtech-android-calling-smoke (33s) (Assertion is false: \"Chat.*|Messages\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "A8",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false
+    },
+    {
+      "component": "android",
+      "issue": "RBAC 'parent reads own child's threads' / 'admin audits' is not actually implemented \u2014 parents and admins get a static 'Read-only observer' notice instead of the child's/session's messages. Client-only rendering of the logged-in user's own conversations makes faithful cross-user observation impossible without server-side conversation membership, but the requested read leg is therefore unmet on the client.",
+      "tag": "skills"
+    },
+    {
+      "component": "android",
+      "issue": "E-AND-ROOM \u2014 integrated Android session room CRASHES on entry (chat/calling unreachable): tapping 'Enter Session Room' opens SessionRoomActivity which force-finishes with NullPointerException at com.cometchat.chatuikit.messagelist.MessageAdapter.<init>(MessageAdapter.java:518), via CometChatMessageList.initViewComponent (CometChatMessageList.java:559) during the view's constructor. The UIKit MessageList inflates before its required config/SDK state is available (A7-family: SDK/UIKit not fully initialized in this activity's context before the <cometchat-message-list> view is constructed). App returns to My Sessions; the entire CometChat surface (chat + voice/video call buttons) is unreachable on Android. Reproduced live 2026-07-16 on the integrated build.",
+      "tag": "SDK",
+      "issue_id": "E-AND-ROOM",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "android",
+      "issue": "E-AND-GHOST \u2014 android calling wedges after the first call (second call never connects): CometChatManager registers call listeners but NEVER releases the call session \u2014 no CometChat.endCall(sessionId) and no clearActiveCall at connect/login or on an incoming ring. After any abnormal end (backing out, app kill, missed) the user-pair stays BUSY server-side and the next call auto-rejects. Same session-lifecycle gap as marketplace W11/A11/I12 and iOS I4.",
+      "tag": "skills",
+      "issue_id": "E-AND-GHOST",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "android",
+      "issue": "E-AND-CALLUI (A12-class) \u2014 android in-call screen is blank gray/black on first mount; call connects (audio live), back-out+reopen paints it. CONFIRMED emulator GLES->Metal compositing artifact, not an app bug: ro.hardware.egl=emulation and SurfaceFlinger renderer='Android Emulator OpenGL ES Translator (Apple M4), OpenGL ES 3.0 (4.1 Metal)'. The CometChat ongoing-call SurfaceView (WebRTC video) sits on a separate hardware layer the emulator's GLES->Metal translator fails to present until a window reconfiguration forces recomposite (why back+reopen fixes it; plain rotation sometimes doesn't recreate the SurfaceView layer). Two app-side mitigations already FAILED on marketplace (SurfaceView recreate = no-op; visibility toggle = fully black, reverted). Will NOT reproduce on a physical device. Definitive test: real device OR emulator relaunched with -gpu swiftshader_indirect (software SurfaceView).",
+      "tag": "harness-error",
+      "issue_id": "E-AND-CALLUI",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "ios",
+      "issue": "Build fails (build_pass=false) after 3 retries. Despite the local CometChatStarscream.podspec workaround, the app still does not build, and the committed `scripts/reconstruct-cometchat-companion-modules.sh` that supposedly 'reconstructs CometChat companion modules from Pods dSYMs' into vendor/ is not a viable mechanism (Swift modules cannot be reconstructed from dSYMs) \u2014 the agent shipped a non-working, non-standard build hack rather than a verified-green integration.",
+      "tag": "agent"
+    },
+    {
+      "component": "ios",
+      "issue": "CometChatSDK 4.1.6 CocoaPods release omits Vendors/CometChatStarscream.xcframework even though its podspec lists it under vendored_frameworks; the binary has undefined CometChatStarscream WebSocket symbols and an @rpath load command, so a CocoaPods-only install links but crashes at launch with 'Library not loaded: @rpath/CometChatStarscream.framework'. Genuine upstream packaging defect requiring an out-of-band SPM binary.",
+      "tag": "SDK"
+    },
+    {
+      "component": "ios",
+      "issue": "CometChatCallEventListener extension defines several on*-prefixed methods (onCallEnded, onIncomingCallAccepted, onOutgoingCallAccepted, onIncomingCallRejected, onOutgoingCallRejected, onCallInitiated) that are not requirements of that UI-Kit protocol (which uses cc*-prefixed events); at best dead no-ops, at worst evidence the agent guessed the event surface. The intended teardown-on-remote-end signal is ambiguous.",
+      "tag": "skills"
+    },
+    {
+      "component": "ios",
+      "issue": "I7 reproduced on edtech: integrated iOS app builds clean but CRASHES AT LAUNCH \u2014 dangling dynamic dependency on CometChatStarscream.framework (statically linked into CometChatSDK, not vendored); verify.sh launch gate caught it ('app is not running after launch \u2014 dyld/@rpath crash'). Third use case to hit this packaging gap (registry I7).",
+      "tag": "SDK",
+      "issue_id": "I7",
+      "source": "record_finding manual 2026-07-16"
+    },
+    {
+      "component": "ios",
+      "issue": "iOS GROUP chat crashes on entry (masterclass unreachable), newly discoverable only after the I7 build fix. Opening a group session's CometChat conversation that contains call-event bubbles hard-crashes on the main thread INSIDE CometChat's own UI Kit: CometChatCallBubble.setupStyle() at CometChatCallBubble.swift:164 (protocol witness for RawRepresentable.rawValue.getter in conformance CallType / specialized == infix), Exception 'Instruction Abort - Translation fault', pc=0, via UITableView cell display -> CometChatCallBubble.willMove(toWindow:). ISOLATION: a 1:1 conversation containing call-event bubbles (Call ended / Outgoing Call / Call accepted) renders fine and does NOT crash \u2014 so iOS 1:1 chat works; the crash is specific to the GROUP conversation's call bubble (group/meeting CallType). Verified live 2026-07-16 on the integrated iOS build (Simulator, iPhone 17 Pro) after fixing I7 (CometChatStarscream + CometChatCardsSwift pods). Crash is entirely in CometChatUIKitSwift compiled code, not app code \u2014 not app-fixable without hiding call history. Blocks the iOS group-call test.",
+      "tag": "SDK",
+      "issue_id": "E-IOS-GROUP-CALLBUBBLE",
+      "source": "record_finding manual 2026-07-16"
+    }
+  ],
+  "retracted": [],
+  "improvement_suggestions": [
+    {
+      "component": "backend",
+      "suggestion": "On the /rest-api/users/create doc page, add the conflict/'already exists' error code and an explicit idempotent create-or-update (POST \u2192 PUT on conflict) pattern, matching what the Groups error table already documents.",
+      "motivated_by": "Idempotent provisioning relies on an unconfirmed ERR_UID_ALREADY_EXISTS code (blocker: unconfirmed already-exists codes).",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Reconcile the UID character-constraint wording between /rest-api/users/create ('alphanumeric with dashes only') and the SDK Key Concepts pages ('alphanumeric, underscore, hyphen') so a single canonical rule is documented.",
+      "motivated_by": "Contradictory UID constraints (staleness_conflict) forced the agent to guess the stricter rule.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Add a docs-mcp guide on observer / read-only access patterns (e.g. how a parent or admin actually reads another user's conversations \u2014 group membership with a restricted scope, or a server-side history proxy via REST), and clarify that a `role` string on a CometChat user does not itself enforce messaging or grant read permissions.",
+      "motivated_by": "Parent/admin read-only audit RBAC was hand-waved and left unimplemented (blocker: RBAC read scope not implemented).",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "backend",
+      "suggestion": "The backend skill must create the app's roles (idempotent POST /roles) before assigning them \u2014 or document that role assignment requires prior role creation; every RBAC-enabled use case hits this on a fresh app",
+      "motivated_by": "E-ROLES \u2014 CometChat user provisioning fails on a fresh app: the integrated backend assigns role: student/tutor/parent/admin on POST /users, but custom roles must be CREATED (POST /roles) before any user can reference them \u2014 on a virgin CometChat app every user-provision call fails 'Failed to validate the data sent with the request' and the entire chat bootstrap is dead. Neither the skill nor docs mention role pre-creation; the integration agent wired RBAC roles it had no way to provision.",
+      "target": "skills"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Lazily ensure the CometChat group exists when the chat descriptor is requested (idempotent ensure_group + add current member in SessionChatView), so groups work regardless of how the session was created (seed, API, migration). And do not swallow provisioning errors silently \u2014 surface them so a broken group is visible",
+      "motivated_by": "E-GROUP-NOPROV \u2014 group sessions have NO CometChat group, so ALL group chat + group voice/video calling is dead (half the calling-spec matrix). Two layers: (1) the seed (api/management/commands/seed.py:245) creates group Sessions directly via Session.objects.create(kind='group',...) and NEVER calls cometchat.ensure_group \u2014 provisioning only runs in the API create/enroll views, which the seed bypasses; (2) SessionChatView returns the descriptor with group_guid='session-<id>' and can_call=true WITHOUT verifying the CometChat group exists. Verified: GET /v3/groups/session-1 -> 'group with guid session-1 does not exist', 0 members. Opening a seeded masterclass room loads a non-existent group -> group chat/call fails. All ensure_group/add_group_member calls are wrapped in cometchat.safe() (errors swallowed), so even API-created groups fail silently.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add a docs-mcp section on cross-user thread observation/audit patterns, clarifying that the client UI Kit can only render the logged-in user's own conversations and that read-only oversight of another user's/session's thread requires server-side moderation/audit APIs or explicit group membership. Include the recommended approach for 'parent reads child's threads' and 'admin audits' RBAC roles.",
+      "motivated_by": "Parent/admin read-only observation is not actually implemented (observers get a placeholder, not the real thread).",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "suggestion": "Document the canonical way to drive conversation selection in the Angular UI Kit (e.g. bind (onItemClick) on <cometchat-conversations> and set the active user/group explicitly) rather than relying on implicit ChatStateService auto-wiring, so the Messages inbox thread pane reliably opens on click.",
+      "motivated_by": "Messages inbox relies on unverified ChatStateService auto-wiring to set the active conversation.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "The Angular skill must import CallAppSettingsBuilder from the calls SDK directly (@cometchat/calls-sdk-javascript) rather than the null UIKit re-export, and document the bundler-safe calls-init for Angular \u2014 same gap as the Vite/React path (W6-ROOT)",
+      "motivated_by": "E-WEB-CALLS \u2014 edtech Angular web app crashes at CometChat bootstrap (chat AND calling dead): 'TypeError: Cannot read properties of null (reading CallAppSettingsBuilder)' at cometchat.service.ts:74. CometChatUIKitCalls, re-exported from @cometchat/chat-uikit-angular, resolves to NULL at runtime under Angular's production esbuild bundle \u2014 the calls SDK is a UMD that the Angular UIKit re-export does not preserve through bundling. Because bootstrap throws before login, the ENTIRE chat surface never mounts (Gate 6 one_to_one_chat fails at step 0 open_chat). Angular analog of marketplace W6-ROOT (Vite). Skill/docs give no working Angular calls-init pattern.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "On session booking (and for existing sessions on first load), the backend/skill should provision the CometChat conversation \u2014 create the group for group-sessions and ensure the 1:1 thread exists \u2014 so Messages reflects the user's actual sessions",
+      "motivated_by": "E-NOCONV \u2014 a booked tutoring session does not provision a CometChat conversation: a student with 2 upcoming + 3 completed sessions sees 'No Conversations Yet' in Messages. The app models sessions in its own DB but never creates the corresponding CometChat 1:1 thread (or group for group-sessions), so the conversation only appears after a manual first message. Users expect their session's chat to be reachable from the session, not to have to cold-start a thread.",
+      "target": "skills"
+    },
+    {
+      "component": "web",
+      "suggestion": "The web skill must import @cometchat/calls-sdk-javascript/dist/index.css (angular.json styles / global import) alongside the chat kit css-variables \u2014 the calling components ship their layout CSS separately and it is not auto-injected",
+      "motivated_by": "E-WEB-CALLCSS \u2014 web call UI renders unstyled/broken: the app imports only @cometchat/chat-uikit-angular/styles/css-variables.css (design tokens) but NOT the calls SDK's component stylesheet @cometchat/calls-sdk-javascript/dist/index.css, so the outgoing/ongoing/incoming call surfaces have no layout CSS (visible but broken). W9-class (unstyled kit) but specific to the calling components. Neither the skill nor docs list the calls index.css as a required import.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Add a 'read-only observer / third-party conversation viewing' recipe to the Android v5 calls/components skill (and its web equivalents): document that the client SDK only surfaces the logged-in user's conversations and give the sanctioned pattern (backend adds the observer UID to the group/1:1 as a muted member, or an audit REST feed) so agents don't silently drop the parent/admin read leg.",
+      "motivated_by": "RBAC parent/admin read-only observation is unimplemented (blocker: parents/admins get a notice, not the threads).",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Correct the cometchat-angular-calls skill (\u00a71.0 + anti-pattern 9): stop labeling an explicit CometChatCalls.init a 'double-init' anti-pattern; state that setCallingEnabled(true) does NOT initialize the standalone Calls/WebRTC SDK and that an explicit CometChatCalls.init(callAppSettings) is required, mirroring the Android calls skill.",
+      "motivated_by": "X1 (calls ring but never connect \u2014 CometChatCalls.init missing); the skill's guidance reproduces the bug.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Document in the Android v5 components/troubleshooting skill the exact CometChatMessageHeader API for showing/hiding the voice/video call buttons (both the hideVoiceCallButton/hideVideoCallButton constructor/XML flags and the runtime setVoiceCallButtonVisibility/setVideoCallButtonVisibility setters), since buttons are hidden by default.",
+      "motivated_by": "A2 (call buttons hidden by default) \u2014 the correct enable path is non-obvious and the agent had to discover the runtime setters.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "Ensure CometChatUIKit.init completes (and the active theme/config are set) BEFORE inflating CometChatMessageList \u2014 gate the SessionRoomActivity's kit views on init like the app does elsewhere, or the skill must document that the message-list view must not be constructed before UIKit init resolves",
+      "motivated_by": "E-AND-ROOM \u2014 integrated Android session room CRASHES on entry (chat/calling unreachable): tapping 'Enter Session Room' opens SessionRoomActivity which force-finishes with NullPointerException at com.cometchat.chatuikit.messagelist.MessageAdapter.<init>(MessageAdapter.java:518), via CometChatMessageList.initViewComponent (CometChatMessageList.java:559) during the view's constructor. The UIKit MessageList inflates before its required config/SDK state is available (A7-family: SDK/UIKit not fully initialized in this activity's context before the <cometchat-message-list> view is constructed). App returns to My Sessions; the entire CometChat surface (chat + voice/video call buttons) is unreachable on Android. Reproduced live 2026-07-16 on the integrated build.",
+      "target": "skills"
+    },
+    {
+      "component": "android",
+      "suggestion": "The android skill must wire call-session hygiene: clear/end a stale active call at connect and on an incoming ring for a different session, and endCall on abnormal teardown \u2014 the SDK provides no default cleanup and every integrator hits the 'first call works, second doesn't' wedge",
+      "motivated_by": "E-AND-GHOST \u2014 android calling wedges after the first call (second call never connects): CometChatManager registers call listeners but NEVER releases the call session \u2014 no CometChat.endCall(sessionId) and no clearActiveCall at connect/login or on an incoming ring. After any abnormal end (backing out, app kill, missed) the user-pair stays BUSY server-side and the next call auto-rejects. Same session-lifecycle gap as marketplace W11/A11/I12 and iOS I4.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Add a cometchat-ios-core (or ios-calls) gotcha documenting that the CocoaPods CometChatSDK 4.1.x release ships without CometChatStarscream.xcframework (referenced by its own podspec) and that the fix is a local podspec sourcing https://library.cometchat.io/ios/v4.0/xcode15/CometChatStarscream_1_0_2.xcframework.zip \u2014 include the ready-to-paste podspec so agents don't invent dSYM-reconstruction hacks.",
+      "motivated_by": "SDK blocker: CometChatSDK 4.1.6 omits CometChatStarscream.xcframework, causing a launch crash; agent blocker: shipped a non-working reconstruct-from-dSYMs script and build still fails.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "Add a docs-mcp entry indexing the CometChatStarscream packaging gap and the exact SPM binary download URL so the query resolves in-tool instead of forcing a web escape to raw.githubusercontent.com Package.swift.",
+      "motivated_by": "docs-mcp coverage gap: the one docs_escape was to GitHub Package.swift to find the missing Starscream framework's download location.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "ios",
+      "suggestion": "In cometchat-ios-calls, document the exact CometChatCallEventListener protocol surface (cc*-prefixed methods: ccOutgoingCall/ccCallAccepted/ccCallRejected/ccCallEnded) and the correct SDK-level signal for remote 1:1 call end plus how to dismiss CometChatOngoingCall, so agents stop adding non-protocol on* methods and hand-rolling window sweeps.",
+      "motivated_by": "skills blocker: extension defines non-protocol on* call methods and manually scans scene windows to dismiss the ongoing-call UI, indicating the event surface is under-documented.",
+      "target": "skills"
+    },
+    {
+      "component": "ios",
+      "suggestion": "CometChatCallBubble.setupStyle() must handle every CallType it can receive in a GROUP conversation without dereferencing a null/mismatched RawRepresentable witness. Likely a version-skew or unhandled group/meeting CallType between CometChatUIKitSwift 5.1.16, CometChatCallsSDK 5.0.1 and CometChatSDK 4.1.6; ship a CallBubble that degrades gracefully for unknown/group call types instead of crashing.",
+      "motivated_by": "iOS GROUP chat crashes on entry (masterclass unreachable), newly discoverable only after the I7 build fix. Opening a group session's CometChat conversation that contains call-event bubbles hard-crashes on the main thread INSIDE CometChat's own UI Kit: CometChatCallBubble.setupStyle() at CometChatCallBubble.swift:164 (protocol witness for RawRepresentable.rawValue.getter in conformance CallType / specialized == infix), Exception 'Instruction Abort - Translation fault', pc=0, via UITableView cell display -> CometChatCallBubble.willMove(toWindow:). ISOLATION: a 1:1 conversation containing call-event bubbles (Call ended / Outgoing Call / Call accepted) renders fine and does NOT crash \u2014 so iOS 1:1 chat works; the crash is specific to the GROUP conversation's call bubble (group/meeting CallType). Verified live 2026-07-16 on the integrated iOS build (Simulator, iPhone 17 Pro) after fixing I7 (CometChatStarscream + CometChatCardsSwift pods). Crash is entirely in CometChatUIKitSwift compiled code, not app code \u2014 not app-fixable without hiding call history. Blocks the iOS group-call test.",
+      "target": "skills"
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "component": "backend",
+      "gap": "Create-user REST page does not document the 'already exists' error code (agent had to guess ERR_UID_ALREADY_EXISTS from the Groups error table) \u2014 no idempotent re-provisioning / conflict-handling guidance for POST /users."
+    },
+    {
+      "component": "backend",
+      "gap": "No backend/server-side auth-token-minting recipe surfaced for a Python/Django framework specifically; agent stitched it together from individual REST endpoint pages (worked, but no end-to-end backend guide)."
+    },
+    {
+      "component": "backend",
+      "gap": "Docs do not explain how a non-participant (parent/admin) actually gains read-only access to another user's 1:1 or group conversations \u2014 setting a `role` string on a CometChat user does not by itself enforce or grant read access."
+    },
+    {
+      "component": "android",
+      "gap": "No doc/skill pattern for read-only / third-party conversation observation (parent reads own child's threads, admin audits) \u2014 the client SDK only renders the logged-in user's own conversations, so the agent had to punt this RBAC leg to a static 'read-only observer' notice."
+    },
+    {
+      "component": "android",
+      "gap": "One docs-mcp query was empty text (returned nothing); likely an agent-side artifact rather than a docs coverage gap, but it produced no signal."
+    },
+    {
+      "component": "ios",
+      "gap": "No docs-mcp coverage for the CometChatSDK 4.1.6 CocoaPods packaging gap (missing CometChatStarscream.xcframework) or the SPM binary download URL (library.cometchat.io/ios/v4.0/xcode15/CometChatStarscream_1_0_2.xcframework.zip) \u2014 the agent had to web-escape to raw.githubusercontent.com Package.swift to discover it."
+    },
+    {
+      "component": "ios",
+      "gap": "No docs-mcp query is recorded for the Django/python backend auth-token flow (/cometchat/token minting via REST API key); backend auth guidance for python was expected from docs-mcp and is not evidenced."
+    },
+    {
+      "component": "ios",
+      "gap": "The single non-empty query about dismissing the ongoing-call UI did not yield a first-class API \u2014 the agent fell back to manually sweeping every scene window to dismiss CometChatOngoingCall, suggesting docs did not clearly answer how the ongoing-call screen dismisses on remote 1:1 end."
+    }
+  ],
+  "hallucinations": [],
+  "components": {
+    "backend": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 80,
+      "ease": 4
+    },
+    "web": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 90,
+      "ease": 4
+    },
+    "android": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 90,
+      "ease": 4
+    },
+    "ios": {
+      "build_pass": false,
+      "variant_ok": true,
+      "completeness": 90,
+      "ease": 2
+    }
+  }
+}

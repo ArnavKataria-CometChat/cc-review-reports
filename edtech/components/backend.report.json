@@ -1,0 +1,213 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "edtech",
+    "platform": "backend",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "backend/django",
+    "backend": "python/django",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-15T19:23:43.949623Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat"
+    ],
+    "expected_variants": [],
+    "expected_backend_auth": "python",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": false,
+    "feature_completeness_pct": 80,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Clean, idiomatic Django. Integration isolated in api/cometchat.py using only stdlib urllib (no new deps), env-driven, inert when unconfigured so build/CI stay green. Best-effort safe() wrapper prevents chat side-effects from breaking core API. REST fullAccess key kept server-side; clients receive only App ID + Region + minted auth token. Correct v3 REST base URL and endpoint shapes. verify.sh extended to assert route resolution + inert behavior."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 3,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 598.1,
+    "tokens": {
+      "input": 14197,
+      "output": 38552
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "REST API create user and create auth token server side",
+        "relevance": 5,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "REST API create group add members owner",
+        "relevance": 5,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": null,
+        "latency_ms": null,
+        "returned_nothing": false
+      }
+    ],
+    "coverage_gaps": [
+      "Create-user REST page does not document the 'already exists' error code (agent had to guess ERR_UID_ALREADY_EXISTS from the Groups error table) \u2014 no idempotent re-provisioning / conflict-handling guidance for POST /users.",
+      "No backend/server-side auth-token-minting recipe surfaced for a Python/Django framework specifically; agent stitched it together from individual REST endpoint pages (worked, but no end-to-end backend guide).",
+      "Docs do not explain how a non-participant (parent/admin) actually gains read-only access to another user's 1:1 or group conversations \u2014 setting a `role` string on a CometChat user does not by itself enforce or grant read access."
+    ],
+    "staleness_conflicts": [
+      "UID character constraints conflict across docs: /rest-api/users/create says 'Alphanumeric with dashes only' while SDK Key Concepts pages say 'alphanumeric, underscore, hyphen.' Agent had to pick the stricter rule to be safe."
+    ]
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "The RBAC scope 'parent reads own child's threads' and 'admin audits' is not actually implemented \u2014 the backend only returns can_send/can_call=false flags plus conversation identifiers, and relies on the client honoring them. Parents/admins are never added to the 1:1/group conversations and no read proxy exists, so there is no real mechanism by which they can read the threads. The read-only audit half of the RBAC requirement is effectively unimplemented.",
+        "tag": "agent"
+      },
+      {
+        "issue": "The idempotent 'already exists' handling depends on error-code strings the agent could not confirm from docs (ERR_UID_ALREADY_EXISTS, ERR_ALREADY_JOINED). If the real codes differ, repeat provisioning/enroll will raise CometChatError instead of being treated as success (fails loudly rather than silently, but breaks the intended idempotency).",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "E-ROLES \u2014 CometChat user provisioning fails on a fresh app: the integrated backend assigns role: student/tutor/parent/admin on POST /users, but custom roles must be CREATED (POST /roles) before any user can reference them \u2014 on a virgin CometChat app every user-provision call fails 'Failed to validate the data sent with the request' and the entire chat bootstrap is dead. Neither the skill nor docs mention role pre-creation; the integration agent wired RBAC roles it had no way to provision.",
+        "tag": "skills",
+        "issue_id": "E-ROLES",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "E-GROUP-NOPROV \u2014 group sessions have NO CometChat group, so ALL group chat + group voice/video calling is dead (half the calling-spec matrix). Two layers: (1) the seed (api/management/commands/seed.py:245) creates group Sessions directly via Session.objects.create(kind='group',...) and NEVER calls cometchat.ensure_group \u2014 provisioning only runs in the API create/enroll views, which the seed bypasses; (2) SessionChatView returns the descriptor with group_guid='session-<id>' and can_call=true WITHOUT verifying the CometChat group exists. Verified: GET /v3/groups/session-1 -> 'group with guid session-1 does not exist', 0 members. Opening a seeded masterclass room loads a non-existent group -> group chat/call fails. All ensure_group/add_group_member calls are wrapped in cometchat.safe() (errors swallowed), so even API-created groups fail silently.",
+        "tag": "skills",
+        "issue_id": "E-GROUP-NOPROV",
+        "source": "record_finding manual 2026-07-16"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "On the /rest-api/users/create doc page, add the conflict/'already exists' error code and an explicit idempotent create-or-update (POST \u2192 PUT on conflict) pattern, matching what the Groups error table already documents.",
+        "motivated_by": "Idempotent provisioning relies on an unconfirmed ERR_UID_ALREADY_EXISTS code (blocker: unconfirmed already-exists codes).",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Reconcile the UID character-constraint wording between /rest-api/users/create ('alphanumeric with dashes only') and the SDK Key Concepts pages ('alphanumeric, underscore, hyphen') so a single canonical rule is documented.",
+        "motivated_by": "Contradictory UID constraints (staleness_conflict) forced the agent to guess the stricter rule.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Add a docs-mcp guide on observer / read-only access patterns (e.g. how a parent or admin actually reads another user's conversations \u2014 group membership with a restricted scope, or a server-side history proxy via REST), and clarify that a `role` string on a CometChat user does not itself enforce messaging or grant read permissions.",
+        "motivated_by": "Parent/admin read-only audit RBAC was hand-waved and left unimplemented (blocker: RBAC read scope not implemented).",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "The backend skill must create the app's roles (idempotent POST /roles) before assigning them \u2014 or document that role assignment requires prior role creation; every RBAC-enabled use case hits this on a fresh app",
+        "motivated_by": "E-ROLES \u2014 CometChat user provisioning fails on a fresh app: the integrated backend assigns role: student/tutor/parent/admin on POST /users, but custom roles must be CREATED (POST /roles) before any user can reference them \u2014 on a virgin CometChat app every user-provision call fails 'Failed to validate the data sent with the request' and the entire chat bootstrap is dead. Neither the skill nor docs mention role pre-creation; the integration agent wired RBAC roles it had no way to provision.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Lazily ensure the CometChat group exists when the chat descriptor is requested (idempotent ensure_group + add current member in SessionChatView), so groups work regardless of how the session was created (seed, API, migration). And do not swallow provisioning errors silently \u2014 surface them so a broken group is visible",
+        "motivated_by": "E-GROUP-NOPROV \u2014 group sessions have NO CometChat group, so ALL group chat + group voice/video calling is dead (half the calling-spec matrix). Two layers: (1) the seed (api/management/commands/seed.py:245) creates group Sessions directly via Session.objects.create(kind='group',...) and NEVER calls cometchat.ensure_group \u2014 provisioning only runs in the API create/enroll views, which the seed bypasses; (2) SessionChatView returns the descriptor with group_guid='session-<id>' and can_call=true WITHOUT verifying the CometChat group exists. Verified: GET /v3/groups/session-1 -> 'group with guid session-1 does not exist', 0 members. Opening a seeded masterclass room loads a non-existent group -> group chat/call fails. All ensure_group/add_group_member calls are wrapped in cometchat.safe() (errors swallowed), so even API-created groups fail silently.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **CometChat skill variant(s) relied on:** The `cometchat` dispatcher skill loaded but is oriented to frontend UI Kits (React/Angular/native), not a Python/Django backend \u2014 none of its per-framework code paths apply. For a backend service the authoritative source was **docs-mcp REST API** pages, which I used directly: `/rest-api/authentication`, `/rest-api/users/create`, `/rest-api/auth-tokens/create`, `/rest-api/groups/create`, `/rest-api/group-members`. These gave exact endpoints, headers (`apikey`), payloads, and error codes.\n- **Where skills/docs were wrong/missing/contradictory:** (1) The dispatcher has no backend/server cohort \u2014 it assumes a client framework; I treated the REST docs as ground truth instead. (2) **UID character constraint conflicts across docs:** `/rest-api/users/create` says \"Alphanumeric with dashes only,\" while the SDK \"Key Concepts\" pages say \"alphanumeric, underscore, hyphen.\" I chose hyphens (`user-<id>`, `session-<id>`) to satisfy the stricter rule. (3) Docs describe the create/mint sequence but not idempotent re-provisioning behavior/error codes explicitly \u2014 I inferred `ERR_UID_ALREADY_EXISTS`/`ERR_GUID_ALREADY_EXISTS` handling from the Groups error table and general patterns and coded defensive fallbacks (POST\u2192PUT update on conflict; treat already-exists as success).\n- **Candidate hallucinations (API surfaces I couldn't fully confirm from docs):** the exact error-code strings `ERR_UID_ALREADY_EXISTS` and `ERR_ALREADY_JOINED` \u2014 the Groups/Group-Members error tables confirm `ERR_GUID_ALREADY_EXISTS`, `ERR_NOT_A_MEMBER`, `ERR_UID_NOT_FOUND`, `ERR_ALREADY_JOINED`, but the user \"already exists\" code was not shown on the create-user page. My code degrades safely if the actual code differs (it just surfaces a `CometChatError` rather than silently mis-handling), so a wrong guess here fails loudly, not silently.\n- **Web-search / guessing:** None. I stayed entirely within docs-mcp + the skill. No web searches.\n- **Scope completed:** user\u2194CometChat mapping with roles; server-side auth-token minting (REST key server-only, never sent to clients); group-session\u2192CometChat group with tutor-owner + enrollment membership sync; RBAC scoping (student/tutor converse; parent + admin read-only observers) surfaced via `/sessions/:id/chat`; secrets in env + gitignored; `docker build` gate green.\n- **Left incomplete / out of scope (backend):** Actual message/history retrieval for parent/admin audit is not proxied through the backend \u2014 the design hands clients the conversation identifiers + read-only flags and relies on CometChat's own RBAC/SDK for enforcement (the `role` is set on each CometChat user for this). Calling is covered only at the identity/permission layer (`can_call`) since WebRTC/call UI is entirely client-side. No automated CometChat call is made in CI (would require live credentials); the token path is exercised via mocked transport instead.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  },
+  "gate_execution": {
+    "specs_executed": 0,
+    "screens_judged": 0,
+    "runtime_success": false
+  }
+}

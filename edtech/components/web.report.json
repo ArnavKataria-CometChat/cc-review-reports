@@ -1,0 +1,317 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "edtech",
+    "platform": "web",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "web/angular",
+    "backend": "python/django",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-15T19:24:59.172749Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat",
+      "cometchat-skills:cometchat-angular-calls"
+    ],
+    "expected_variants": [
+      "angular"
+    ],
+    "expected_backend_auth": "python",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": false,
+    "feature_completeness_pct": 90,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Idiomatic Angular standalone-component integration. No secrets in the bundle: environment.ts/prod hold empty appId/region placeholders and App ID/Region + per-user auth token are fetched from the backend (GET /cometchat/config, POST /cometchat/token). UIKit/Calls SDKs added as deps with matching peer versions; bundle + component-style budgets raised sensibly for the kit; kit CSS + icon assets wired in angular.json; allowedCommonJsDependencies added. Phase-B seam cleanly removed (placeholder markup/styles/roomHeadline deleted) with no unrelated refactors. Call-overlay CSS is scoped to exact kit classes with a comment warning against broad [class*=\"...-call\"] selectors."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": true,
+    "retry_count": 0,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 738.7,
+    "tokens": {
+      "input": 42615,
+      "output": 74113
+    }
+  },
+  "docs_mcp": {
+    "queries": [],
+    "coverage_gaps": [],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "Calls ring but never connect (android/web) \u2014 CometChatCalls.init() is never called (WebRTC SDK uninitialized) and no ongoing-call session is wired (**/*.{ts,tsx,js,jsx,kt,swift}: required call-site `CometChatCalls\\.init\\(` not found)",
+        "tag": "skills",
+        "auto_caught": true,
+        "issue_id": "X1",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": true
+      },
+      {
+        "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+        "tag": "harness-error",
+        "auto_caught": true,
+        "issue_id": "W1",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": false,
+        "debug_agent": {
+          "verdict": "harness_bug",
+          "confidence": "high",
+          "root_cause": "Gate 3 web runtime smoke drove the PRE-INTEGRATION baseline build, not the integrated one. The reviewer builds two images per component \u2014 ccrev-edtech-web:base (Phase A) and :cc (Phase B integrated). verify_component\u2192verify_docker_build (lib/verify.py:100-101) only `docker build`s + tags the :cc image; it never runs it. _smoke_web (lib/smoke.py:434-462) then reuses whatever container already answers on the smoke port via the _http_reachable short-circuit (lib/smoke.py:439) and only boots via compose when NOT reachable. A stale ccrev-edtech-web:base container (image created 2026-07-15T09:22Z, before the Phase B integrate commit c3f7add at Jul-15 23:38 IST) was left running on :8091, so Gate 3 tested the Phase A app which has no chat. Confirmed: at failure login succeeds but the sidebar has no Messages link (screenshot) and the served bundle has no 'cometchat'; the backend :base container 404s on /cometchat/config (a Phase B route). Running the existing ccrev-edtech-web:cc image and re-running the identical flow advances past the Messages nav-click (chat.mjs:25) to waitForSelector('.cometchat-list-item') (chat.mjs:26), proving the integrated app has the Messages nav and chat surface \u2014 only my pointing it at the stale :base backend blocked it further. The W1 (scroll-clip) fingerprint is a misattribution: the tested build never reaches any chat surface.",
+          "used_reference_impl": false,
+          "debug_agent_fixed": false,
+          "verification": {
+            "reran": "rendered edtech/web/chat.mjs against live :8091 (:base) \u2192 red, reproduces W_RUNTIME nav-timeout; then against ccrev-edtech-web:cc on :8099 \u2192 advanced past the Messages nav-click to the chat-list wait (integrated app correct)",
+            "result": "red"
+          },
+          "registry_draft": "",
+          "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W1.dossier.yaml"
+        },
+        "pending_checkpoint_review": true
+      },
+      {
+        "issue": "Web chat container dimensions do not match the visible chat area \u2014 custom height overrides fight the kit's own __body{height:100%} CSS and collapse the body (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+        "tag": "harness-error",
+        "auto_caught": true,
+        "issue_id": "W4",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": false,
+        "debug_agent": {
+          "verdict": "harness_bug",
+          "confidence": "high",
+          "root_cause": "Gate-3 web smoke ran against a stale pre-Phase-B docker container, not the integration under test. The deployed ccrev-edtech-web image was created 2026-07-15T09:20:46Z (~9h before the Phase-B integrate commit c3f7add at 2026-07-15T18:08Z); its bundle contains 0 occurrences of 'cometchat' and 0 of 'Messages'/'/messages' (it is the phase-A baseline build). lib/smoke.py:_smoke_web reuses any container already reachable at base_url without rebuilding ('if not _http_reachable(base_url)'), so a leftover phase-A container at :8091 served the Phase-B smoke. Because that bundle has no Messages nav / no /messages route, page.click('a:has-text(\"Messages\")') times out (the W_RUNTIME evidence). Proof the integrated code is correct: a fresh `ng build` of HEAD (ca99ddb), served on a scratch port, renders the Messages link, the click succeeds and routes to /messages, and the CometChat bundle loads. The backend container is stale identically (source backend/api/urls.py:48 defines /cometchat/config but the deployed backend returns 404). The W4 fingerprint is a misattribution \u2014 the flow never reaches the chat surface, so the CSS-height detector never ran.",
+          "used_reference_impl": false,
+          "debug_agent_fixed": false,
+          "verification": {
+            "reran": "chat.mjs flow (login -> click Messages) against a fresh `ng build` of HEAD served on :8199",
+            "result": "green"
+          },
+          "registry_draft": "",
+          "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W4.dossier.yaml"
+        },
+        "pending_checkpoint_review": true
+      },
+      {
+        "issue": "Incoming-call overlay mis-placed OR a broad [class*=\"incoming-call\"] selector hijacks message-bubble call-log classes into a full-screen overlay (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+        "tag": "harness-error",
+        "auto_caught": true,
+        "issue_id": "W2",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": false,
+        "debug_agent": {
+          "verdict": "harness_bug",
+          "confidence": "high",
+          "root_cause": "The Gate 3 integrate web smoke ran against the STALE Phase A baseline container. lib/smoke.py:434-439 reuses an already-running instance whenever base_url is HTTP-reachable and only does `docker compose up -d --build` when unreachable. The `ccrev-edtech-web:base` container (serving main-M66UPDU4.js, zero cometchat) was hot on :8091 since 2026-07-15T09:22Z \u2014 ~9h BEFORE the Phase B integration commit c3f7add (2026-07-15 23:38 IST / 18:08Z) \u2014 so the smoke reused it and never rebuilt. The served bundle has no /messages route (it redirects to /home), no 'Messages' nav link, and no CometChat components, so calling.mjs:25 `page.click('a:has-text(\"Messages\")')` finds 0 elements and times out on every rerun. The integrated source is correct: routes.ts:44-48 defines /messages, shell.component.ts:21 adds the Messages nav for students, and styles.scss:311-335 uses the exact `.cometchat-incoming-call` class (explicitly avoiding the broad [class*] selector). The W2 fingerprint is a misattribution \u2014 there is no overlay because the served app has no CometChat at all.",
+          "used_reference_impl": false,
+          "debug_agent_fixed": false,
+          "verification": {
+            "reran": "Playwright repro against live http://localhost:8091 (login student@demo.edu -> inspect sidebar + /messages route)",
+            "result": "red"
+          },
+          "registry_draft": "draft/web-smoke-reuses-stale-baseline-container",
+          "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W2.dossier.yaml"
+        },
+        "pending_checkpoint_review": true
+      },
+      {
+        "issue": "In-call surface is half-screen or a blank black overlay \u2014 broad [class*=\"outgoing-call\"]/[class*=\"ongoing-call\"] selector regression and/or missing full-viewport ongoing-call container (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
+        "tag": "harness-error",
+        "auto_caught": true,
+        "issue_id": "W3",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": false,
+        "debug_agent": {
+          "verdict": "harness_bug",
+          "confidence": "high",
+          "root_cause": "Gate-3 web smoke drove a STALE Phase-A baseline container, not the integrated build. `verify_docker_build` (lib/verify.py:98) builds `ccrev-edtech-web:cc` (89.3MB, with the CometChat kit) but nothing in the harness deploys it; `_smoke_web` (lib/smoke.py:432-435) reuses any app already reachable at base_url and only boots a container when the port is UNREACHABLE. The Phase-A `ccrev-edtech-web:base` container (up 10h) kept answering on localhost:8091 serving main-M66UPDU4.js (2.6KB, no 'Messages'/'cometchat'), so calling.mjs's `page.click('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')` timed out at 25s (W_RUNTIME) because the baseline nav is only Home/Find Tutors/My Sessions. Verified: the integrated `:cc` build renders the Messages nav (NAV_LINKS includes 'Messages') and the click succeeds; the classifier then mis-fingerprinted the nav-entry timeout as W3 (in-call surface).",
+          "used_reference_impl": false,
+          "debug_agent_fixed": false,
+          "verification": {
+            "reran": "deployed ccrev-edtech-web:cc on :8099 and ran the exact failing flow step (login student@demo.edu -> click Messages nav); on :cc the click succeeds (CLICKED_MESSAGES_OK, nav shows Messages), on the live :base:8091 it times out at 25s",
+            "result": "green"
+          },
+          "registry_draft": "",
+          "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W3.dossier.yaml"
+        },
+        "pending_checkpoint_review": true
+      },
+      {
+        "issue": "Parent/admin read-only observation is not actually implemented: the UI Kit only renders the logged-in user's own conversations, so a parent 'reading own child's threads' or an admin auditing a session sees a static read-only placeholder note (observerReason()) instead of the real thread. The use-case RBAC requirement (parent reads own child's threads; admin audits) is therefore only partially met \u2014 the send/call gate is enforced, but the actual observation surface is a stub.",
+        "tag": "SDK"
+      },
+      {
+        "issue": "The Messages inbox relies on an undocumented/unverified auto-wiring: <cometchat-conversations> with no (onItemClick)/(itemClick) handler is assumed to set active conversation state read back via ChatStateService.activeUser()/activeGroup(). If ChatStateService does not auto-populate active conversation on click (no explicit binding is present), clicking a conversation never opens a thread and the inbox thread pane stays empty. This integration path is not exercised by the auto-caught W-issues.",
+        "tag": "agent"
+      },
+      {
+        "issue": "G6-FORKBOMB \u2014 Gate 6 heal layer recursed into a process fork bomb (observed: 764 gate6.run processes). Chain: a failed choreography triggers _heal_layer (gate6/run.py:202) which spawns a diagnose-only debug agent; the agent's dossier instructs 'reproduce by running the repro command' = 'python3 -m gate6.run <chor>'; that re-invocation fails, triggers ITS OWN heal layer, spawns ANOTHER agent, ad infinitum. spawn_cap_per_stage did NOT bound it because the cap only limits one in-process debug_clusters call \u2014 the recursion is across separate OS processes, each with a fresh cap. Fixed: CC_GATE6_NO_HEAL env guard (a debug-agent-launched gate6.run runs the choreography for evidence but never re-heals), propagated from lib/debug_agent to any child gate6.run; self_test fixture added.",
+        "tag": "harness-error",
+        "issue_id": "G6-FORKBOMB",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "E-WEB-CALLS \u2014 edtech Angular web app crashes at CometChat bootstrap (chat AND calling dead): 'TypeError: Cannot read properties of null (reading CallAppSettingsBuilder)' at cometchat.service.ts:74. CometChatUIKitCalls, re-exported from @cometchat/chat-uikit-angular, resolves to NULL at runtime under Angular's production esbuild bundle \u2014 the calls SDK is a UMD that the Angular UIKit re-export does not preserve through bundling. Because bootstrap throws before login, the ENTIRE chat surface never mounts (Gate 6 one_to_one_chat fails at step 0 open_chat). Angular analog of marketplace W6-ROOT (Vite). Skill/docs give no working Angular calls-init pattern.",
+        "tag": "skills",
+        "issue_id": "E-WEB-CALLS",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "E-NOCONV \u2014 a booked tutoring session does not provision a CometChat conversation: a student with 2 upcoming + 3 completed sessions sees 'No Conversations Yet' in Messages. The app models sessions in its own DB but never creates the corresponding CometChat 1:1 thread (or group for group-sessions), so the conversation only appears after a manual first message. Users expect their session's chat to be reachable from the session, not to have to cold-start a thread.",
+        "tag": "skills",
+        "issue_id": "E-NOCONV",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "G6-KITDOM \u2014 the Gate 6 web executor (gate6/executors/web_driver.mjs) was written against the REACT CometChat kit (marketplace) and does not cleanly drive the ANGULAR kit (edtech). Concrete DOM differences found live: nav label 'Messages' vs 'Chat'; conversation rows are .cometchat-paginated-list__item / .cometchat-conversation-item (Angular) vs .cometchat-list-item (React); the <cometchat-message-header> host is display:contents (no box, never 'visible' to Playwright) vs a real visible div. Partial cross-kit fixes applied (nav param, dynamic row selector, attached+composer header check), but per-app row-open still needs tuning. This is a HARNESS limitation, NOT an app finding \u2014 recorded harness-error so it never contaminates the skills ledger.",
+        "tag": "harness-error",
+        "issue_id": "G6-KITDOM",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "E-WEB-CALLCSS \u2014 web call UI renders unstyled/broken: the app imports only @cometchat/chat-uikit-angular/styles/css-variables.css (design tokens) but NOT the calls SDK's component stylesheet @cometchat/calls-sdk-javascript/dist/index.css, so the outgoing/ongoing/incoming call surfaces have no layout CSS (visible but broken). W9-class (unstyled kit) but specific to the calling components. Neither the skill nor docs list the calls index.css as a required import.",
+        "tag": "skills",
+        "issue_id": "E-WEB-CALLCSS",
+        "source": "record_finding manual 2026-07-16"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a docs-mcp section on cross-user thread observation/audit patterns, clarifying that the client UI Kit can only render the logged-in user's own conversations and that read-only oversight of another user's/session's thread requires server-side moderation/audit APIs or explicit group membership. Include the recommended approach for 'parent reads child's threads' and 'admin audits' RBAC roles.",
+        "motivated_by": "Parent/admin read-only observation is not actually implemented (observers get a placeholder, not the real thread).",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Document the canonical way to drive conversation selection in the Angular UI Kit (e.g. bind (onItemClick) on <cometchat-conversations> and set the active user/group explicitly) rather than relying on implicit ChatStateService auto-wiring, so the Messages inbox thread pane reliably opens on click.",
+        "motivated_by": "Messages inbox relies on unverified ChatStateService auto-wiring to set the active conversation.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "The Angular skill must import CallAppSettingsBuilder from the calls SDK directly (@cometchat/calls-sdk-javascript) rather than the null UIKit re-export, and document the bundler-safe calls-init for Angular \u2014 same gap as the Vite/React path (W6-ROOT)",
+        "motivated_by": "E-WEB-CALLS \u2014 edtech Angular web app crashes at CometChat bootstrap (chat AND calling dead): 'TypeError: Cannot read properties of null (reading CallAppSettingsBuilder)' at cometchat.service.ts:74. CometChatUIKitCalls, re-exported from @cometchat/chat-uikit-angular, resolves to NULL at runtime under Angular's production esbuild bundle \u2014 the calls SDK is a UMD that the Angular UIKit re-export does not preserve through bundling. Because bootstrap throws before login, the ENTIRE chat surface never mounts (Gate 6 one_to_one_chat fails at step 0 open_chat). Angular analog of marketplace W6-ROOT (Vite). Skill/docs give no working Angular calls-init pattern.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "On session booking (and for existing sessions on first load), the backend/skill should provision the CometChat conversation \u2014 create the group for group-sessions and ensure the 1:1 thread exists \u2014 so Messages reflects the user's actual sessions",
+        "motivated_by": "E-NOCONV \u2014 a booked tutoring session does not provision a CometChat conversation: a student with 2 upcoming + 3 completed sessions sees 'No Conversations Yet' in Messages. The app models sessions in its own DB but never creates the corresponding CometChat 1:1 thread (or group for group-sessions), so the conversation only appears after a manual first message. Users expect their session's chat to be reachable from the session, not to have to cold-start a thread.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "The web skill must import @cometchat/calls-sdk-javascript/dist/index.css (angular.json styles / global import) alongside the chat kit css-variables \u2014 the calling components ship their layout CSS separately and it is not auto-injected",
+        "motivated_by": "E-WEB-CALLCSS \u2014 web call UI renders unstyled/broken: the app imports only @cometchat/chat-uikit-angular/styles/css-variables.css (design tokens) but NOT the calls SDK's component stylesheet @cometchat/calls-sdk-javascript/dist/index.css, so the outgoing/ongoing/incoming call surfaces have no layout CSS (visible but broken). W9-class (unstyled kit) but specific to the calling components. Neither the skill nor docs list the calls index.css as a required import.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": [
+      {
+        "attempt": 1,
+        "issue_ids": [
+          "X1",
+          "W1",
+          "W4",
+          "W2",
+          "W3"
+        ],
+        "prompt_snippet": "# Phase B \u2014 Targeted Remediation (heal pass)\n\nYou already integrated CometChat into this app on branch\n`feature/cometchat-integration`. An automated check caught a **specific, known\nintegration defect** in the code you committed. Your ONLY job now is to fix that\none defect \u2014 surgically \u2014 and nothing else.\n\nThis is **not** a re-integration. Do not redo the integration, do not restructure,\ndo not \"improve\" anything that is already working. Treat everything outside the\nnamed defect as frozen.\n\n## What was caught\n\nThe following detector(s) fired against your committed code:\n\n- [X1] Calls ring but ",
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_clock_seconds": 313.3,
+        "transcript_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/phaseB_heal_v1.jsonl",
+        "run_log_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/phaseB_heal_v1_toollog.jsonl",
+        "detectors_still_firing": [
+          "W1",
+          "W4",
+          "W2",
+          "W3"
+        ],
+        "build_pass": true,
+        "runtime_success": false
+      },
+      {
+        "attempt": 2,
+        "issue_ids": [
+          "W1",
+          "W4",
+          "W2",
+          "W3"
+        ],
+        "prompt_snippet": "# Phase B \u2014 Targeted Remediation (heal pass)\n\nYou already integrated CometChat into this app on branch\n`feature/cometchat-integration`. An automated check caught a **specific, known\nintegration defect** in the code you committed. Your ONLY job now is to fix that\none defect \u2014 surgically \u2014 and nothing else.\n\nThis is **not** a re-integration. Do not redo the integration, do not restructure,\ndo not \"improve\" anything that is already working. Treat everything outside the\nnamed defect as frozen.\n\n## What was caught\n\nThe following detector(s) fired against your committed code:\n\n- [W1] Web chat won't ",
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_clock_seconds": 208.9,
+        "transcript_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/phaseB_heal_v2.jsonl",
+        "run_log_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/phaseB_heal_v2_toollog.jsonl",
+        "detectors_still_firing": [
+          "W1",
+          "W4",
+          "W2",
+          "W3"
+        ],
+        "build_pass": true,
+        "runtime_success": false
+      }
+    ],
+    "debug_agent": {
+      "spawned": 4,
+      "undiagnosed_clusters": [],
+      "inconclusive_rate": 0.0
+    }
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n**Fixed:**\n- **[W2]** `src/styles.scss` \u2014 `.cometchat-incoming-call` had `position:fixed` + `z-index` but no offsets, so the incoming-call overlay rendered mis-placed (auto top/left \u2192 normal-flow position). Added `top:1rem; left:50%; transform:translateX(-50%)` to pin it as a fixed **top-center** overlay per the catalog. Selector stays the exact component class (no broad `[class*=\"incoming-call\"]`), so chat call-log bubbles are untouched.\n\n**Already conforming (left frozen \u2014 no change):**\n- **[W1]** `chat-pane.component.ts` and `messages.component.ts` already bound the kit elements with `flex:1 1 0; min-height:0` and set **no** `overflow:hidden`/fixed height on `.cometchat` \u2014 the kit's own `__body{overflow-y:auto}` scroller is free to run.\n- **[W4]** No height override exists on `.cometchat`/kit body; heights live only on outer flex containers (`.split`/`.room-chat`), so the kit lays out its own body.\n- **[W3]** `.cometchat-ongoing-call, .cometchat-outgoing-call { position:fixed; inset:0; z-index:1000 }` \u2014 exact kit classes, full-viewport, no broad `[class*=\"\u2026-call\"]` selector.\n\n**Skills/docs used:** Applied the fix directly from the heal catalog's W2 guidance (\"target the EXACT `.cometchat-incoming-call` class and give it a fixed top-center overlay\"), consistent with my saved memory `[[cometchat-angular-v5-calls-init-gap]]`. Did not need to re-query `docs-mcp` \u2014 the exact selector name (`.cometchat-incoming-call`) is already used correctly in the committed CSS and the component is imported as `CometChatIncomingCallComponent` in `shell.component.ts`, confirming the class.\n\n**API/class/prop uncertainty (candidate hallucinations):** None \u2014 no new API/class/selector was introduced; only three CSS properties were added to an existing, already-correct selector.\n\n**Web-search / guesses:** None.\n\n**Still open / note:** All four detectors (W1\u2013W4) reported the *same* upstream Playwright proof \u2014 a timeout waiting to click the `Chat`/`Messages` nav locator \u2014 i.e. the probe never reached the chat surface, so the individual visual assertions never ran. The committed CSS for W1/W3/W4 already matched the catalog's prescribed fix; the only genuine deviation was the W2 mis-placement, now corrected. If the detector re-fires with the identical \"can't click Messages\" timeout, the blocker is upstream of the chat CSS (app failing to reach the authenticated shell in the headless run), which cannot be confirmed/repaired headlessly here and is outside the named CSS scope. The uncommitted `cometchat.service.ts` change (explicit `CometChatCalls.init`) is a prior, separate calls-init fix and was left intact.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 1,
+    "healed_findings": [
+      "X1"
+    ],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  },
+  "gate_execution": {
+    "specs_executed": 10,
+    "screens_judged": 1,
+    "runtime_success": false
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "edtech",
+    "platform": "ios",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "ios/swiftui",
+    "backend": "python/django",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-15T19:28:07.315314Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat-ios-core",
+      "cometchat-skills:cometchat-ios-calls",
+      "cometchat-skills:cometchat-ios-components"
+    ],
+    "expected_variants": [
+      "ios"
+    ],
+    "expected_backend_auth": "python",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": false,
+    "runtime_success": null,
+    "feature_completeness_pct": 90,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": false,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "The Swift integration itself is clean and idiomatic: CometChatManager owns a single SDK lifecycle (correctly a singleton, never @StateObject), the RBAC descriptor from /sessions/:id/chat structurally drives composer/call-button visibility, and secrets are handled correctly (REST key server-only, App ID+Region public and gitignored/env-sourced, backend-minted auth token login). SessionRoomView's rewrite from Phase-A placeholder to live chat is in-scope, not an unrelated refactor. The concerning parts are all in build tooling: (a) a hand-authored CometChatStarscream.podspec pointing at CometChat's SPM binary zip to paper over a real CocoaPods packaging gap, and (b) a `scripts/reconstruct-cometchat-companion-modules.sh` that the README/.gitignore say 'reconstructs CometChat companion modules from Pods dSYMs' into a gitignored `vendor/` \u2014 reconstructing Swift modules from dSYMs is not a viable mechanism, and build_pass=false indicates it did not actually resolve the build. Also, the CometChatCallEventListener extension mixes real cc*-prefixed events with several on*-prefixed methods (onCallEnded/onIncomingCallAccepted/onOutgoingCallAccepted/etc.) that are not part of that protocol."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 3,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 1,
+    "docs_escape_queries": [
+      "https://raw.githubusercontent.com/cometchat/chat-sdk-ios/main/Package.swift"
+    ],
+    "wall_clock_seconds": 2306.2,
+    "tokens": {
+      "input": 24530,
+      "output": 150972
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "iOS UI Kit call events ccShowOngoingCall ccCallEnded CometChatCallEvents listener ongoing call",
+        "relevance": 3,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": true
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": true
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": true
+      }
+    ],
+    "coverage_gaps": [
+      "No docs-mcp coverage for the CometChatSDK 4.1.6 CocoaPods packaging gap (missing CometChatStarscream.xcframework) or the SPM binary download URL (library.cometchat.io/ios/v4.0/xcode15/CometChatStarscream_1_0_2.xcframework.zip) \u2014 the agent had to web-escape to raw.githubusercontent.com Package.swift to discover it.",
+      "No docs-mcp query is recorded for the Django/python backend auth-token flow (/cometchat/token minting via REST API key); backend auth guidance for python was expected from docs-mcp and is not evidenced.",
+      "The single non-empty query about dismissing the ongoing-call UI did not yield a first-class API \u2014 the agent fell back to manually sweeping every scene window to dismiss CometChatOngoingCall, suggesting docs did not clearly answer how the ongoing-call screen dismisses on remote 1:1 end."
+    ],
+    "staleness_conflicts": [
+      "Version mix worth documenting: CometChatUIKitSwift ~> 5.1 transitively pins CometChatSDK ~> 4.1 (chat SDK v4) alongside CometChatCallsSDK ~> 5.0 \u2014 correct but non-obvious, and it is exactly the v4 chat SDK build (4.1.6) that carries the Starscream packaging bug."
+    ]
+  },
+  "summary": {
+    "ease_of_integration": 2,
+    "blockers": [
+      {
+        "issue": "Build fails (build_pass=false) after 3 retries. Despite the local CometChatStarscream.podspec workaround, the app still does not build, and the committed `scripts/reconstruct-cometchat-companion-modules.sh` that supposedly 'reconstructs CometChat companion modules from Pods dSYMs' into vendor/ is not a viable mechanism (Swift modules cannot be reconstructed from dSYMs) \u2014 the agent shipped a non-working, non-standard build hack rather than a verified-green integration.",
+        "tag": "agent"
+      },
+      {
+        "issue": "CometChatSDK 4.1.6 CocoaPods release omits Vendors/CometChatStarscream.xcframework even though its podspec lists it under vendored_frameworks; the binary has undefined CometChatStarscream WebSocket symbols and an @rpath load command, so a CocoaPods-only install links but crashes at launch with 'Library not loaded: @rpath/CometChatStarscream.framework'. Genuine upstream packaging defect requiring an out-of-band SPM binary.",
+        "tag": "SDK"
+      },
+      {
+        "issue": "CometChatCallEventListener extension defines several on*-prefixed methods (onCallEnded, onIncomingCallAccepted, onOutgoingCallAccepted, onIncomingCallRejected, onOutgoingCallRejected, onCallInitiated) that are not requirements of that UI-Kit protocol (which uses cc*-prefixed events); at best dead no-ops, at worst evidence the agent guessed the event surface. The intended teardown-on-remote-end signal is ambiguous.",
+        "tag": "skills"
+      },
+      {
+        "issue": "I7 reproduced on edtech: integrated iOS app builds clean but CRASHES AT LAUNCH \u2014 dangling dynamic dependency on CometChatStarscream.framework (statically linked into CometChatSDK, not vendored); verify.sh launch gate caught it ('app is not running after launch \u2014 dyld/@rpath crash'). Third use case to hit this packaging gap (registry I7).",
+        "tag": "SDK",
+        "issue_id": "I7",
+        "source": "record_finding manual 2026-07-16"
+      },
+      {
+        "issue": "iOS GROUP chat crashes on entry (masterclass unreachable), newly discoverable only after the I7 build fix. Opening a group session's CometChat conversation that contains call-event bubbles hard-crashes on the main thread INSIDE CometChat's own UI Kit: CometChatCallBubble.setupStyle() at CometChatCallBubble.swift:164 (protocol witness for RawRepresentable.rawValue.getter in conformance CallType / specialized == infix), Exception 'Instruction Abort - Translation fault', pc=0, via UITableView cell display -> CometChatCallBubble.willMove(toWindow:). ISOLATION: a 1:1 conversation containing call-event bubbles (Call ended / Outgoing Call / Call accepted) renders fine and does NOT crash \u2014 so iOS 1:1 chat works; the crash is specific to the GROUP conversation's call bubble (group/meeting CallType). Verified live 2026-07-16 on the integrated iOS build (Simulator, iPhone 17 Pro) after fixing I7 (CometChatStarscream + CometChatCardsSwift pods). Crash is entirely in CometChatUIKitSwift compiled code, not app code \u2014 not app-fixable without hiding call history. Blocks the iOS group-call test.",
+        "tag": "SDK",
+        "issue_id": "E-IOS-GROUP-CALLBUBBLE",
+        "source": "record_finding manual 2026-07-16"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a cometchat-ios-core (or ios-calls) gotcha documenting that the CocoaPods CometChatSDK 4.1.x release ships without CometChatStarscream.xcframework (referenced by its own podspec) and that the fix is a local podspec sourcing https://library.cometchat.io/ios/v4.0/xcode15/CometChatStarscream_1_0_2.xcframework.zip \u2014 include the ready-to-paste podspec so agents don't invent dSYM-reconstruction hacks.",
+        "motivated_by": "SDK blocker: CometChatSDK 4.1.6 omits CometChatStarscream.xcframework, causing a launch crash; agent blocker: shipped a non-working reconstruct-from-dSYMs script and build still fails.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add a docs-mcp entry indexing the CometChatStarscream packaging gap and the exact SPM binary download URL so the query resolves in-tool instead of forcing a web escape to raw.githubusercontent.com Package.swift.",
+        "motivated_by": "docs-mcp coverage gap: the one docs_escape was to GitHub Package.swift to find the missing Starscream framework's download location.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "In cometchat-ios-calls, document the exact CometChatCallEventListener protocol surface (cc*-prefixed methods: ccOutgoingCall/ccCallAccepted/ccCallRejected/ccCallEnded) and the correct SDK-level signal for remote 1:1 call end plus how to dismiss CometChatOngoingCall, so agents stop adding non-protocol on* methods and hand-rolling window sweeps.",
+        "motivated_by": "skills blocker: extension defines non-protocol on* call methods and manually scans scene windows to dismiss the ongoing-call UI, indicating the event surface is under-documented.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "CometChatCallBubble.setupStyle() must handle every CallType it can receive in a GROUP conversation without dereferencing a null/mismatched RawRepresentable witness. Likely a version-skew or unhandled group/meeting CallType between CometChatUIKitSwift 5.1.16, CometChatCallsSDK 5.0.1 and CometChatSDK 4.1.6; ship a CallBubble that degrades gracefully for unknown/group call types instead of crashing.",
+        "motivated_by": "iOS GROUP chat crashes on entry (masterclass unreachable), newly discoverable only after the I7 build fix. Opening a group session's CometChat conversation that contains call-event bubbles hard-crashes on the main thread INSIDE CometChat's own UI Kit: CometChatCallBubble.setupStyle() at CometChatCallBubble.swift:164 (protocol witness for RawRepresentable.rawValue.getter in conformance CallType / specialized == infix), Exception 'Instruction Abort - Translation fault', pc=0, via UITableView cell display -> CometChatCallBubble.willMove(toWindow:). ISOLATION: a 1:1 conversation containing call-event bubbles (Call ended / Outgoing Call / Call accepted) renders fine and does NOT crash \u2014 so iOS 1:1 chat works; the crash is specific to the GROUP conversation's call bubble (group/meeting CallType). Verified live 2026-07-16 on the integrated iOS build (Simulator, iPhone 17 Pro) after fixing I7 (CometChatStarscream + CometChatCardsSwift pods). Crash is entirely in CometChatUIKitSwift compiled code, not app code \u2014 not app-fixable without hiding call history. Blocks the iOS group-call test.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "No pod provides the CometChatStarscream symbols \u2014 the CometChatSDK 4.1.6 pod is genuinely missing its Starscream dependency framework. Let me read the podspec to see how it's supposed to be provisioned.\nThe podspec **does** vendor `Vendors/CometChatStarscream.xcframework` \u2014 so it should have been extracted. Let me check whether it actually exists on disk (extraction may have been incomplete).\n`Vendors/` contains only `CometChatSDK.xcframework` \u2014 the `CometChatStarscream.xcframework` the podspec references is missing from the extracted pod. Let me download the source zip and check whether it actually contains it (extraction may have dropped it).\nThis is a genuine upstream packaging bug: the CometChatSDK 4.1.6 zip does **not** contain `CometChatStarscream.xcframework` even though its podspec references it \u2014 so the required framework is unobtainable via CocoaPods. Let me check CometChat's SPM distribution, which usually provides it as a separate binary target with a download URL.\nFound it \u2014 CometChat's SPM package reveals `CometChatStarscream` is a **separate binary** at `https://library.cometchat.io/ios/v4.0/xcode15/CometChatStarscream_1_0_2.xcframework.zip`. The CocoaPods podspec references it but the zip omits it (upstream pod bug). Let me download it and verify it provides the missing symbols.\nThe real CometChatStarscream 1.0.2 xcframework defines exactly the symbols CometChatSDK needs (arm64 + x86_64 sim slices). The cleanest fix: a small **local podspec** with the upstream `:http` source, so CocoaPods downloads and embeds it during `pod install` \u2014 no committed binary, works for CLI and Xcode GUI identically. Let me create it.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  },
+  "gate_execution": {
+    "specs_executed": 0,
+    "screens_judged": 0,
+    "runtime_success": null
+  }
+}
