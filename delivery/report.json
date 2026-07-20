@@ -33,7 +33,7 @@
     "agent": 3,
     "skills": 4,
     "harness-error": 2,
-    "sdk": 1,
+    "SDK": 1,
     "docs-mcp": 1
   },
   "blockers": [
@@ -49,23 +49,25 @@
     },
     {
       "component": "android-ios",
-      "issue": "Android ghost call \u2014 the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up ([android] Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: \"(?s).*Calling.*\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "issue": "Android ghost call \u2014 the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (verified in source, not by the failing flow: the app never overrode CallListener.onCallEndedMessageReceived (a default no-op) until the fix; mobile/lib/cometchat/cometchat_service.dart now overrides it)",
       "tag": "skills",
       "auto_caught": true,
       "issue_id": "A4",
       "tier": "runtime",
       "remediation_applied": false,
-      "remediation_worked": false
+      "remediation_worked": false,
+      "evidence_corrected": "The original evidence was the Maestro run `[Failed] delivery-android-calling-smoke ... Assertion is false: \"(?s).*Calling.*\" is visible`. That SAME output was attached to three different findings, and its real cause is recorded separately in this report as a harness-error: INSTALL_FAILED_INSUFFICIENT_STORAGE meant the smoke drove a STALE app, so it cannot demonstrate any of them. The finding itself is real \u2014 kept, with evidence that actually supports it (the fix in the app source). One of the three, which claimed CometChatIncomingCall was mounted as an always-on overlay, was retracted: git log -S shows that widget never existed in mobile/lib."
     },
     {
       "component": "android-ios",
-      "issue": "Android call buttons untappable \u2014 the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated ([android] Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: \"(?s).*Calling.*\" is visible)\n\n1/1 Flow Failed\n\n\n)",
+      "issue": "Android call buttons untappable \u2014 the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated (verified in source, not by the failing flow: the fix is in mobile/lib/cometchat/direct_chat_screen.dart (commit daa1ddc), a PreferredSize appBar reserving MediaQuery.padding.top, with a comment naming the status-bar touch region as the cause)",
       "tag": "skills",
       "auto_caught": true,
       "issue_id": "A8",
       "tier": "runtime",
       "remediation_applied": false,
-      "remediation_worked": false
+      "remediation_worked": false,
+      "evidence_corrected": "The original evidence was the Maestro run `[Failed] delivery-android-calling-smoke ... Assertion is false: \"(?s).*Calling.*\" is visible`. That SAME output was attached to three different findings, and its real cause is recorded separately in this report as a harness-error: INSTALL_FAILED_INSUFFICIENT_STORAGE meant the smoke drove a STALE app, so it cannot demonstrate any of them. The finding itself is real \u2014 kept, with evidence that actually supports it (the fix in the app source). One of the three, which claimed CometChatIncomingCall was mounted as an always-on overlay, was retracted: git log -S shows that widget never existed in mobile/lib."
     },
     {
       "component": "android-ios",
@@ -100,7 +102,7 @@
     {
       "component": "android-ios",
       "issue": "Flutter SDK: CometChat.endCall() can NEVER end a connected call \u2014 it omits the server-required `joinedAt`, so the server rejects it and the session stays `ongoing` forever. CometChat then busy-rejects every later call for that user, to ANY peer, permanently; the state is server-side so it survives logout, reinstall and a device wipe. Measured on device: `endCall ERR The joinedAt post parameter is required to end a call`. Every layer beneath the public API accepts the parameter (updateCallStatusRaw(id,status,{joinedAt}), CallsApi.updateCallStatus(id,status,joinedAt)) and the Android SDK carries it \u2014 the Flutter port dropped it. Any app whose call ends by anything other than the kit's own hang-up button (backgrounded, evicted, force-quit, crashed) permanently bricks calling for that user. Worse, it is invisible from the console: the dashboard's Calls view reads the WebRTC log, which correctly shows `ended`, while the busy check reads the chat-side call record, which is stuck at `ongoing`. Workaround verified: PUT {appId}.apiclient-{region}.cometchat.io/v3.0/calls/{sessionId} {\"status\":\"ended\",\"joinedAt\":<unix>} with appId + a USER authToken.",
-      "tag": "sdk",
+      "tag": "SDK",
       "auto_caught": false,
       "issue_id": "F1",
       "tier": "runtime",

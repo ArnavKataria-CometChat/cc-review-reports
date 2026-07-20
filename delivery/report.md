@@ -8,7 +8,7 @@
 - Build pass: **3/3** · Trigger: **1/3** · Variant: **2/3**
 - Feature completeness (avg): **90.0%** · Ease (avg): **3.7/5**
 - Hallucinations: **0** · docs-escapes: **0** · retries: **2**
-- Findings by tag: {'agent': 3, 'skills': 4, 'harness-error': 2, 'sdk': 1, 'docs-mcp': 1}
+- Findings by tag: {'agent': 3, 'skills': 4, 'harness-error': 2, 'SDK': 1, 'docs-mcp': 1}
 
 ## Per-platform
 
@@ -30,28 +30,18 @@
 
 ### skills — the review's primary product  (4)
 
-- (android-ios) Android ghost call — the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up ([android] Maestro assertion failed [calling.yaml] on android: 
-Waiting for flows to complete...
-[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: "(?s).*Calling.*" is visible)
-
-1/1 Flow Failed
-
-
-)
-- (android-ios) Android call buttons untappable — the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated ([android] Maestro assertion failed [calling.yaml] on android: 
-Waiting for flows to complete...
-[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: "(?s).*Calling.*" is visible)
-
-1/1 Flow Failed
-
-
-)
+- (android-ios) Android ghost call — the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (verified in source, not by the failing flow: the app never overrode CallListener.onCallEndedMessageReceived (a default no-op) until the fix; mobile/lib/cometchat/cometchat_service.dart now overrides it)
+- (android-ios) Android call buttons untappable — the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated (verified in source, not by the failing flow: the fix is in mobile/lib/cometchat/direct_chat_screen.dart (commit daa1ddc), a PreferredSize appBar reserving MediaQuery.padding.top, with a comment naming the status-bar touch region as the cause)
 - (android-ios) Calling is in scope but no flutter-v6 CALLING skill was loaded (only conversations + messages). The agent had to hand-roll the entire calling path from SDK source reads: the separate CometChatUIKitCalls.init, enableCalls=true, the CallNavigationContext.navigatorKey wiring in main.dart, re-arming calls after logout, and all native setup (Podfile platform 15.1 + clearing EXCLUDED_ARCHS for the arm64 simulator slice, android minSdk 26, camera/mic/bluetooth permissions). This is a skills coverage gap distinct from the specific runtime overlay bugs.
 - (android-ios) Flutter UI Kit: the CALLER cannot learn its call was answered. CometChatCallEvents.ccCallAccepted fires on the CALLEE only; the caller must subscribe to the raw SDK's CallListener.onOutgoingCallAccepted, which no skill or doc mentions. Without it a caller backgrounding a LIVE call believes the call is still ringing and sends rejectCall(cancelled), which the server refuses ('cannot update from ongoing to cancelled'), stranding the session. Compounds F1: together they make an unreleasable session the DEFAULT outcome of leaving an app mid-call.
 
 ### docs-mcp — documentation coverage  (1)
 
 - (android-ios) Flutter UI Kit docstring is actively misleading: CometChat.clearActiveCall() is documented in call_event_service.dart:604 as 'Always clears the SERVER-SIDE state', but it only clears a device-local cache. It is the API an integrator reaches for when calls start returning busy, and it silently no-ops against exactly that state. This misdirection is plausibly why this whole class of bug survives review.
+
+### SDK — CometChat SDK packaging / API  (1)
+
+- (android-ios) Flutter SDK: CometChat.endCall() can NEVER end a connected call — it omits the server-required `joinedAt`, so the server rejects it and the session stays `ongoing` forever. CometChat then busy-rejects every later call for that user, to ANY peer, permanently; the state is server-side so it survives logout, reinstall and a device wipe. Measured on device: `endCall ERR The joinedAt post parameter is required to end a call`. Every layer beneath the public API accepts the parameter (updateCallStatusRaw(id,status,{joinedAt}), CallsApi.updateCallStatus(id,status,joinedAt)) and the Android SDK carries it — the Flutter port dropped it. Any app whose call ends by anything other than the kit's own hang-up button (backgrounded, evicted, force-quit, crashed) permanently bricks calling for that user. Worse, it is invisible from the console: the dashboard's Calls view reads the WebRTC log, which correctly shows `ended`, while the busy check reads the chat-side call record, which is stuck at `ongoing`. Workaround verified: PUT {appId}.apiclient-{region}.cometchat.io/v3.0/calls/{sessionId} {"status":"ended","joinedAt":<unix>} with appId + a USER authToken.
 
 ### agent — integrating-agent behaviour  (3)
 
@@ -69,10 +59,6 @@ adb: failed to install /Users/admin/Desktop/Allapplications/delivery/mobile/buil
 adb: failed to install /Users/admin/Desktop/Allapplications/delivery/mobile/build/app/outputs/flutter-apk/app-debug.apk: Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE: Failed to override installation location]
 
 )
-
-### sdk  (1)
-
-- (android-ios) Flutter SDK: CometChat.endCall() can NEVER end a connected call — it omits the server-required `joinedAt`, so the server rejects it and the session stays `ongoing` forever. CometChat then busy-rejects every later call for that user, to ANY peer, permanently; the state is server-side so it survives logout, reinstall and a device wipe. Measured on device: `endCall ERR The joinedAt post parameter is required to end a call`. Every layer beneath the public API accepts the parameter (updateCallStatusRaw(id,status,{joinedAt}), CallsApi.updateCallStatus(id,status,joinedAt)) and the Android SDK carries it — the Flutter port dropped it. Any app whose call ends by anything other than the kit's own hang-up button (backgrounded, evicted, force-quit, crashed) permanently bricks calling for that user. Worse, it is invisible from the console: the dashboard's Calls view reads the WebRTC log, which correctly shows `ended`, while the busy check reads the chat-side call record, which is stuck at `ongoing`. Workaround verified: PUT {appId}.apiclient-{region}.cometchat.io/v3.0/calls/{sessionId} {"status":"ended","joinedAt":<unix>} with appId + a USER authToken.
 
 ## Prioritized improvement suggestions
 
