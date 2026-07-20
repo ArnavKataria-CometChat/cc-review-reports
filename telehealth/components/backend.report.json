@@ -75,10 +75,6 @@
     "ease_of_integration": 4,
     "blockers": [
       {
-        "issue": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.",
-        "tag": "skills"
-      },
-      {
         "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
         "tag": "skills"
       }
@@ -138,5 +134,13 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.",
+      "tag": "skills",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 the skill never says what the finding claims. It asserts cometchat-production implies an arbitrary `role` can be set on POST /v3/users. grep -rc -i 'role' over that skill returns 1 hit, at line 880, about the APP's own admin role in an auth checklist. Its create-user example posts {uid, name, ...(avatar?{avatar}:{})} \u2014 no role \u2014 and no /v3/users POST body in any of the 120 skills contains a role field. The app's own source names the real origin: backend/src/services/cometchat.ts (db41854) cites 'verified against docs.cometchat.com, v3'. The idea came from the DOCS, not the skill. The API behaviour (400 'The selected role is invalid') is real and worth recording as a docs gap \u2014 but not as the skill asserting something it never said."
+    }
+  ]
 }

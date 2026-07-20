@@ -97,16 +97,11 @@
         "severity": "high"
       },
       {
-        "issue": "After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area \u2014 the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.",
+        "issue": "X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code \u2014 no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init \u2014 just mount CometChatIncomingCall' \u2014 that assumption is EMPIRICALLY WRONG; the call never connects.",
         "tag": "skills",
         "source": "human-checkpoint-runtime",
-        "severity": "medium"
-      },
-      {
-        "issue": "X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code \u2014 no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init \u2014 just mount CometChatIncomingCall' \u2014 that assumption is EMPIRICALLY WRONG; the call never connects.",
-        "tag": "agent",
-        "source": "human-checkpoint-runtime",
-        "severity": "critical"
+        "severity": "critical",
+        "retag_reason": "Re-tagged agent -> skills. The finding faults the AGENT for assuming the additive ringing path needs no CometChatCalls.init. That assumption came VERBATIM from the skills: cometchat-react-calls/SKILL.md:330 \u2014 'Both canonical React v6 sample apps do calls this exact way with ZERO CometChatCalls.login/CometChatCalls.init' \u2014 and cometchat-android-v6-migration/SKILL.md:337 'Drop separate CometChatCalls.init', L387 'No CometChatCalls.init calls outside what V6 does internally'. The agent followed the guidance exactly and the guidance is wrong: fix aced4f6 added CometChatCalls.init(CallAppSettings) and calling then connected live. Filing this under `agent` blamed the integrator for a skills defect and under-reported the highest-value gap in the set."
       }
     ],
     "improvement_suggestions": [
@@ -171,5 +166,15 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area \u2014 the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.",
+      "tag": "skills",
+      "source": "human-checkpoint-runtime",
+      "severity": "medium",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 a self-inflicted regression from the fix attempt, attributed to a CometChat gap. W4 claims a missing message-list container-sizing recipe. The same run's own fixes_matrix.md records the root cause: 'my W1 overrides fought the kit's OWN loaded CSS (__body{height:100%}) -> body collapsed to 134px', fixed by REMOVING the overrides and letting the kit lay out (verified, body fills 403px). Fix commit aced4f6 says the same: the kit 'already lays out the message list and handles its own scroll... do NOT override the kit's internal flex/overflow (that collapsed the body)'. The kit's sizing contract works; overriding it caused the mismatch. Does NOT affect W1 (web[2]), which is independently real."
+    }
+  ]
 }

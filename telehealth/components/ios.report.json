@@ -79,8 +79,10 @@
         "tag": "skills"
       },
       {
-        "issue": "Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call \u2014 the agent had to code to the resolved .swiftinterface instead of the skill.",
-        "tag": "skills"
+        "issue": "iOS skills document `CometChatCallButtons.set(user:)`, an API that does not exist. Verified against the resolved binary interface (ios/Pods/CometChatUIKitSwift/.../arm64-apple-ios.swiftinterface:1990-2014): CometChatCallButtons exposes `public var user`, `public var controller`, `public init(width:height:)` and `public func connect() -> Self` \u2014 there is no set(user:). The skills assert it at cometchat-ios-features/SKILL.md:80 and cometchat-ios-calls/references/swiftui-uikit-hosting.md:17,50, so following the skill does not compile.",
+        "tag": "skills",
+        "narrowed": true,
+        "narrowing_reason": "Originally asserted THREE skill-vs-SDK mismatches; two were false and have been removed rather than published. (a) login ApiStatus IS documented correctly \u2014 cometchat-ios-core/SKILL.md:353 states 'The login callback uses .success and .onError cases, NOT Swift's standard Result type', with the exact snippet at L376-386. (b) the init closure IS documented correctly \u2014 same file L253 gives `completion: @escaping (Result<Bool, Error>) -> Void` with a .success/.failure switch. Only the CometChatCallButtons.set(user:) claim survives verification. Publishing (a) and (b) would have handed CometChat two fabricated defects against text they got right."
       },
       {
         "issue": "CometChatWebRTC's pod xcconfig sets EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64, which propagates to Pods-Telehealth and forces the whole app to build x86_64-only for the simulator. This breaks install/run on Apple Silicon simulators (arch mismatch) even though WebRTC.xcframework SHIPS the ios-arm64_x86_64-simulator slice. Passes the xcodebuild build gate (x86_64), fails only at install/run \u2014 a build-pass != runtime gap.",

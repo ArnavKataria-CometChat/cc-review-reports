@@ -1,6 +1,6 @@
 # CometChat Skills Review — telehealth
 
-**Batch:** `2026-07-08-baseline` · **skills@** `main` · **platforms:** backend, web, android, ios
+**Batch:** `2026-07-08-baseline` · **skills@** `ac87450a6be3c0f3300ac953942b5c8dd1b70c33` · **platforms:** backend, web, android, ios
 **Repo:** ArnavKataria-CometChat/cc-review-telehealth
 
 ## Headline
@@ -8,7 +8,7 @@
 - Build pass: **4/4** · Trigger: **4/4** · Variant: **4/4**
 - Feature completeness (avg): **89.2%** · Ease (avg): **3.8/5**
 - Hallucinations: **0** · docs-escapes: **7** · retries: **7**
-- Findings by tag: {'skills': 22, 'agent': 4, 'SDK': 2}
+- Findings by tag: {'skills': 21, 'agent': 2, 'SDK': 2}
 
 ## Per-platform
 
@@ -26,28 +26,27 @@
 > **Reading this report:** every finding below is a skill / docs / SDK gap observed in the baseline integration. Where a fix was applied to the demo app during review, that is a *verification aid only* — the underlying gap remains **open** until the skill, docs, or SDK is updated. Fix status never downgrades a finding.
 
 
-## Findings — gaps by owner (28 total)
+## Findings — gaps by owner (25 total)
 
 
-### skills — the review's primary product  (22)
+### skills — the review's primary product  (21)
 
-- (backend) The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.
 - (backend) The skill's create-user example checks HTTP 409 for the create→update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.
 - (web) The CometChat calls SDK references Node built-ins (fs/path), forcing a manual next.config.mjs webpack fallback plus an ssr:false dynamic gate; this SSR/bundler friction is not surfaced by the loaded nextjs-patterns skill and is consistent with the 3 build retries.
 - (web) Chat message list does not scroll — the embedded CometChatMessageList wrapper clips overflow (overflow:hidden + fixed 560px), so message history is unreadable. cometchat-react-patterns' chat-layout guidance did not prevent an unscrollable list.
 - (web) Incoming-call popup (CometChatIncomingCall) renders at bottom-left instead of a standard centered overlay — no placement/positioning recipe in the calls skill for mounting the incoming-call component.
 - (web) Ongoing call renders as a floating overlay covering only the top half of the screen with a broken bottom half — the call surface lacks a full-viewport container; react-calls 'call container dimensions' guidance didn't yield a correct full-screen layout.
-- (web) After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area — the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.
+- (web) X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code — no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init — just mount CometChatIncomingCall' — that assumption is EMPIRICALLY WRONG; the call never connects.
 - (android) Calls skill rule 1.8 documents `CometChatIncomingCall(modifier = ...)` with no `call` argument, which does not compile ('No value passed for parameter call'). The correct usage (a required `call =` driven by CometChat.addCallListener → StateFlow<Call?>) only appears in the compose-placement skill §7, so the two skills contradict each other.
-- (android) The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` — the agent only found it by inspecting the resolved AAR after a compile error.
+- (android) The `Call` type FQN is never given as an importable import line; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` — the agent only found it by inspecting the resolved AAR after a compile error.
 - (android) The core skill gives a conflicting Kotlin floor (≥2.1.0 vs ≥2.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.
-- (android) V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.
+- (android) Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android — the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue — the installed APK is current. Same incomplete-calling gap the agent left on web.
 - (android) A2 — Android chat has NO way to INITIATE a call: CometChatMessageHeader hides the voice/video call buttons by DEFAULT in this UI Kit version, so the chat shipped with no call affordance. Confirmed live 2026-07-10; fixed by hideVoiceCallButton=false + hideVideoCallButton=false.
 - (android) A3 — Android app returns to the HOME screen after a call ENDS: CometChatOngoingCallActivity is launched in its own task (FLAG_ACTIVITY_NEW_TASK), so finishing it drops to the launcher (looks like the app 'exited'; process stays alive). Confirmed live 2026-07-10; fixed by re-foregrounding MainActivity (FLAG_ACTIVITY_REORDER_TO_FRONT) on CometChatCallEvent.CallEnded.
 - (android) A4 — Android ghost call: CometChatOngoingCallActivity is NOT finished when the REMOTE party ends a 1:1 call. CometChat.CallListener.onCallEndedMessageReceived is a DEFAULT NO-OP that an app implementing only the four abstract ringing callbacks silently drops; CometChatEvents.callEvents CallEnded covers only the LOCAL end. Confirmed live.
 - (ios) cometchat-ios-core presents SwiftPM (github.com/cometchat/cometchat-uikit-ios) as a first-class install option, but that package is a single binary target that hard-imports CometChatSDK and CometChatCardsSwift while declaring neither, and CometChatCardsSwift has no SwiftPM package at all — a SwiftPM-only install cannot compile, forcing a manual pivot to CocoaPods.
 - (ios) The cometchat-ios-calls skill states CallsSDK is vendored inside UIKit with no separate add; this is false for the CocoaPods line — CometChatCallsSDK/WebRTC had to be added explicitly for calling to link.
-- (ios) Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call — the agent had to code to the resolved .swiftinterface instead of the skill.
+- (ios) iOS skills document `CometChatCallButtons.set(user:)`, an API that does not exist. Verified against the resolved binary interface (ios/Pods/CometChatUIKitSwift/.../arm64-apple-ios.swiftinterface:1990-2014): CometChatCallButtons exposes `public var user`, `public var controller`, `public init(width:height:)` and `public func connect() -> Self` — there is no set(user:). The skills assert it at cometchat-ios-features/SKILL.md:80 and cometchat-ios-calls/references/swiftui-uikit-hosting.md:17,50, so following the skill does not compile.
 - (ios) SKILLS ROUTING: the cometchat-ios dispatcher under-triggered — the iOS run loaded ONLY 'cometchat-ios' (the dispatcher), not 'cometchat-ios-core' (which owns 'initialization, login, provider pattern, anti-patterns') nor any SwiftUI sub-skill. (Android by contrast loaded 6 family skills.) So the agent wrote the consult room with no foundational SwiftUI guidance in context — the root enabler of the re-render loop.
 - (ios) SKILLS COVERAGE: even cometchat-ios-core's anti-patterns (§8) are UIKit-centric (init once, singleton manager, retain cycles) and do NOT cover the SwiftUI view-lifecycle pitfall that caused this bug — wrapping the shared manager in @StateObject and driving connect()/access-fetch from a .task that re-fires. No 'observe the shared manager via @EnvironmentObject, key .task on a stable id, run connect() once' guidance exists.
 - (ios) I3 — iOS in-app incoming-call popup is swallowed when the chat is opened as a modal (.sheet/.fullScreenCover): the UI Kit presents CometChatIncomingCall on the KEY-WINDOW ROOT, which is already presenting the modal, so UIKit rejects it ('...which is already presenting') and the inbound call is silently MISSED. Confirmed live 2-client; unified-log literal 'Attempt to present <CometChatUIKitSwift.CometChatIncomingCall'.
@@ -59,11 +58,9 @@
 - (ios) UIKit 5.1.16's binary hard-imports CometChatCardsSwift but the podspec does not declare it, and CometChatSDK 4.1.6's podspec lists CometChatStarscream.xcframework under vendored_frameworks while the actual pod download omits it — two transitive modules are missing from the packaged pods, requiring an explicit `pod 'CometChatCardsSwift'` and a hand-authored local CometChatStarscream.podspec vendoring the framework from CometChat's CDN.
 - (ios) CometChatWebRTC's pod xcconfig sets EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64, which propagates to Pods-Telehealth and forces the whole app to build x86_64-only for the simulator. This breaks install/run on Apple Silicon simulators (arch mismatch) even though WebRTC.xcframework SHIPS the ios-arm64_x86_64-simulator slice. Passes the xcodebuild build gate (x86_64), fails only at install/run — a build-pass != runtime gap.
 
-### agent — integrating-agent behaviour  (4)
+### agent — integrating-agent behaviour  (2)
 
 - (web) A never-logged-in peer makes CometChat.getUser 404; this is handled only by a client-side `new CometChat.User(uid)` fallback, which does not actually provision the peer server-side, so messaging/calling that user stays unreliable until the backend eagerly provisions both participants.
-- (web) X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code — no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init — just mount CometChatIncomingCall' — that assumption is EMPIRICALLY WRONG; the call never connects.
-- (android) Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android — the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue — the installed APK is current. Same incomplete-calling gap the agent left on web.
 - (ios) iOS Consult Room is stuck in an infinite re-render/task loop: the SwiftUI ConsultRoomLiveView fires GET /api/cometchat/appointments/:id/chat thousands of times (each cancelled, -999) and never reaches the .ready phase, so the 'Open Secure Chat' button + call bar NEVER render and CometChat never initializes (no connect()/login). The chat/calling is effectively non-functional at runtime and also storms the backend. Build gate (xcodebuild) passes; only running it reveals this.
 
 ## Retracted, demoted & methodology notes (7)

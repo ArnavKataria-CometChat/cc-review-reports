@@ -1,7 +1,7 @@
 {
   "use_case": "telehealth",
   "batch_id": "2026-07-08-baseline",
-  "skills_ref": "main",
+  "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
   "platforms": [
     "backend",
     "web",
@@ -38,16 +38,11 @@
     "cometchat-skills:cometchat-react-calls"
   ],
   "blocker_tags": {
-    "skills": 22,
-    "agent": 4,
+    "skills": 21,
+    "agent": 2,
     "SDK": 2
   },
   "blockers": [
-    {
-      "component": "backend",
-      "issue": "The cometchat-production skill implies an arbitrary `role` can be set on POST /v3/users, but the live API rejects it with 400 'The selected role is invalid' unless the role is pre-defined in the dashboard's Roles & Permissions. The agent had to discover this against a live API and work around it by carrying the app role in metadata.appRole + tags.",
-      "tag": "skills"
-    },
     {
       "component": "backend",
       "issue": "The skill's create-user example checks HTTP 409 for the create\u2192update fallback, but CometChat signals a duplicate as HTTP 400 with error code ERR_UID_ALREADY_EXISTS. A naive port of the skill would never enter the update branch and would silently fail to sync on every repeat login.",
@@ -86,17 +81,11 @@
     },
     {
       "component": "web",
-      "issue": "After the scroll fix (W1 now works), the chat CONTAINER dimensions don't match the actually-visible chat area \u2014 the rendered message area is misaligned/mismatched vs its box. Points to a missing reliable message-list container sizing recipe for the CometChat React kit (the same gap that made W1 hard). Follow-up layout issue.",
+      "issue": "X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code \u2014 no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init \u2014 just mount CometChatIncomingCall' \u2014 that assumption is EMPIRICALLY WRONG; the call never connects.",
       "tag": "skills",
       "source": "human-checkpoint-runtime",
-      "severity": "medium"
-    },
-    {
-      "component": "web",
-      "issue": "X1 ROOT CAUSE (web calling incomplete): the app has NO call-session code \u2014 no CometChatCalls.init(), no generateToken/joinSession, and mounts ONLY <CometChatIncomingCall/> (no CometChatOngoingCall / session host). Verified via 2-client test: the call RINGS both sides (outgoing:true / incoming:true) but never reaches ongoing (no media session, no video) and no error surfaces. The agent's INTEGRATION SUMMARY claimed the 'additive ringing path needs no CometChatCalls.init \u2014 just mount CometChatIncomingCall' \u2014 that assumption is EMPIRICALLY WRONG; the call never connects.",
-      "tag": "agent",
-      "source": "human-checkpoint-runtime",
-      "severity": "critical"
+      "severity": "critical",
+      "retag_reason": "Re-tagged agent -> skills. The finding faults the AGENT for assuming the additive ringing path needs no CometChatCalls.init. That assumption came VERBATIM from the skills: cometchat-react-calls/SKILL.md:330 \u2014 'Both canonical React v6 sample apps do calls this exact way with ZERO CometChatCalls.login/CometChatCalls.init' \u2014 and cometchat-android-v6-migration/SKILL.md:337 'Drop separate CometChatCalls.init', L387 'No CometChatCalls.init calls outside what V6 does internally'. The agent followed the guidance exactly and the guidance is wrong: fix aced4f6 added CometChatCalls.init(CallAppSettings) and calling then connected live. Filing this under `agent` blamed the integrator for a skills defect and under-reported the highest-value gap in the set."
     },
     {
       "component": "android",
@@ -105,8 +94,10 @@
     },
     {
       "component": "android",
-      "issue": "The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
-      "tag": "skills"
+      "issue": "The `Call` type FQN is never given as an importable import line; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
+      "tag": "skills",
+      "narrowed": true,
+      "narrowing_reason": "Reworded from 'not documented' to 'never given as an importable line'. The string com.cometchat.chat.core.Call DOES appear twice in the loaded calls skill (L147, L229), so the absolutist claim was false. The defensible core holds: no snippet anywhere gives an importable `import` line for it, and every neighbouring model import points at com.cometchat.chat.models.*, while the placement section's `Call?` snippet carries no imports at all."
     },
     {
       "component": "android",
@@ -115,15 +106,11 @@
     },
     {
       "component": "android",
-      "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
-      "tag": "skills"
-    },
-    {
-      "component": "android",
       "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
-      "tag": "agent",
+      "tag": "skills",
       "source": "human-checkpoint-runtime",
-      "severity": "critical"
+      "severity": "critical",
+      "retag_reason": "Re-tagged agent -> skills. The finding faults the AGENT for assuming the additive ringing path needs no CometChatCalls.init. That assumption came VERBATIM from the skills: cometchat-react-calls/SKILL.md:330 \u2014 'Both canonical React v6 sample apps do calls this exact way with ZERO CometChatCalls.login/CometChatCalls.init' \u2014 and cometchat-android-v6-migration/SKILL.md:337 'Drop separate CometChatCalls.init', L387 'No CometChatCalls.init calls outside what V6 does internally'. The agent followed the guidance exactly and the guidance is wrong: fix aced4f6 added CometChatCalls.init(CallAppSettings) and calling then connected live. Filing this under `agent` blamed the integrator for a skills defect and under-reported the highest-value gap in the set."
     },
     {
       "component": "android",
@@ -159,8 +146,10 @@
     },
     {
       "component": "ios",
-      "issue": "Skill API prose does not match the real SDK: login(authToken:)/logout use an ApiStatus enum (.success(User)/.onError(CometChatException)), the init closure is Result<Bool,Error>, and CometChatCallButtons uses properties .user/.controller with init(width:height:) + .connect() rather than a set(user:) call \u2014 the agent had to code to the resolved .swiftinterface instead of the skill.",
-      "tag": "skills"
+      "issue": "iOS skills document `CometChatCallButtons.set(user:)`, an API that does not exist. Verified against the resolved binary interface (ios/Pods/CometChatUIKitSwift/.../arm64-apple-ios.swiftinterface:1990-2014): CometChatCallButtons exposes `public var user`, `public var controller`, `public init(width:height:)` and `public func connect() -> Self` \u2014 there is no set(user:). The skills assert it at cometchat-ios-features/SKILL.md:80 and cometchat-ios-calls/references/swiftui-uikit-hosting.md:17,50, so following the skill does not compile.",
+      "tag": "skills",
+      "narrowed": true,
+      "narrowing_reason": "Originally asserted THREE skill-vs-SDK mismatches; two were false and have been removed rather than published. (a) login ApiStatus IS documented correctly \u2014 cometchat-ios-core/SKILL.md:353 states 'The login callback uses .success and .onError cases, NOT Swift's standard Result type', with the exact snippet at L376-386. (b) the init closure IS documented correctly \u2014 same file L253 gives `completion: @escaping (Result<Bool, Error>) -> Void` with a .success/.failure switch. Only the CometChatCallButtons.set(user:) claim survives verification. Publishing (a) and (b) would have handed CometChat two fabricated defects against text they got right."
     },
     {
       "component": "ios",

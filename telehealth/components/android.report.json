@@ -76,22 +76,21 @@
         "tag": "skills"
       },
       {
-        "issue": "The `Call` type FQN is not documented; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
-        "tag": "skills"
+        "issue": "The `Call` type FQN is never given as an importable import line; the calls/listener snippets imply `com.cometchat.chat.models.*`, but the real class is `com.cometchat.chat.core.Call` \u2014 the agent only found it by inspecting the resolved AAR after a compile error.",
+        "tag": "skills",
+        "narrowed": true,
+        "narrowing_reason": "Reworded from 'not documented' to 'never given as an importable line'. The string com.cometchat.chat.core.Call DOES appear twice in the loaded calls skill (L147, L229), so the absolutist claim was false. The defensible core holds: no snippet anywhere gives an importable `import` line for it, and every neighbouring model import points at com.cometchat.chat.models.*, while the placement section's `Call?` snippet carries no imports at all."
       },
       {
         "issue": "The core skill gives a conflicting Kotlin floor (\u22652.1.0 vs \u22652.2.0). The resolved 6.0.x GA artifacts ship Kotlin 2.2.0 metadata and fail compileDebugKotlin under 2.1.20 with an 'incompatible metadata version' error, forcing a bump to 2.2.0.",
         "tag": "skills"
       },
       {
-        "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
-        "tag": "skills"
-      },
-      {
         "issue": "Android calling stuck on 'connecting' (and not dismissed on cancel). ROOT CAUSE (same as web X1): CometChatCalls.init() is NEVER called on android \u2014 the WebRTC Calls SDK is uninitialized, so an accepted call can't establish a media session and hangs on 'connecting'. The call listener only sets/clears the incoming-call StateFlow; it does not host the ongoing/connecting session nor fully clear the connecting UI on onIncomingCallCancelled/onOutgoingCallRejected. NOT a build issue \u2014 the installed APK is current. Same incomplete-calling gap the agent left on web.",
-        "tag": "agent",
+        "tag": "skills",
         "source": "human-checkpoint-runtime",
-        "severity": "critical"
+        "severity": "critical",
+        "retag_reason": "Re-tagged agent -> skills. The finding faults the AGENT for assuming the additive ringing path needs no CometChatCalls.init. That assumption came VERBATIM from the skills: cometchat-react-calls/SKILL.md:330 \u2014 'Both canonical React v6 sample apps do calls this exact way with ZERO CometChatCalls.login/CometChatCalls.init' \u2014 and cometchat-android-v6-migration/SKILL.md:337 'Drop separate CometChatCalls.init', L387 'No CometChatCalls.init calls outside what V6 does internally'. The agent followed the guidance exactly and the guidance is wrong: fix aced4f6 added CometChatCalls.init(CallAppSettings) and calling then connected live. Filing this under `agent` blamed the integrator for a skills defect and under-reported the highest-value gap in the set."
       },
       {
         "issue": "A2 \u2014 Android chat has NO way to INITIATE a call: CometChatMessageHeader hides the voice/video call buttons by DEFAULT in this UI Kit version, so the chat shipped with no call affordance. Confirmed live 2026-07-10; fixed by hideVoiceCallButton=false + hideVideoCallButton=false.",
@@ -185,5 +184,13 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "V6 markets calling as 'bundled', but chatuikit bytecode-references CometChatCalls$SessionSettingsBuilder from calls-sdk-android; the calls-sdk-android artifact must be added as an explicit peer dependency or the app crashes at init. This required peer dep is not documented in the calls skill.",
+      "tag": "skills",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 the claimed documentation gap is the skill's MOST-documented item. The finding says the calls-sdk-android peer dep is undocumented; cometchat-android-v6-calls/SKILL.md carries it in the frontmatter description, the compatibility line, a dedicated section '### W1 \u2014 calls-sdk-android:5.0.+ is a REQUIRED peer dep' with the exact gradle line, plus the rationalizations table, red-flags table, verification checklist and anti-pattern #1. The run's skills_loaded INCLUDES cometchat-android-v6-calls, and the agent applied not only W1 but also W3 (the RTC stub classes appear in the diff), proving it read the workaround list. The technical fact is true; the stated CAUSE (a skills gap) is false."
+    }
+  ]
 }
