@@ -1,0 +1,170 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "delivery",
+    "platform": "web",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "web/react-router",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-17T12:21:10.073917Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat-react-calls",
+      "cometchat-skills:cometchat-troubleshooting"
+    ],
+    "expected_variants": [
+      "react-router"
+    ],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": false,
+    "variant_selection": false,
+    "false_triggers": [],
+    "missed_triggers": [
+      "react-router"
+    ]
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": false,
+    "feature_completeness_pct": 90,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "The self-heal fix is a single-line `height: 100%` on `.cc-msg-list`, scoped and idiomatic; the summary shows disciplined restraint (no overflow/fixed-height hacks, sibling selectors left frozen). Broader integration is documented in README: no client CometChat secrets (App ID/region/token fetched at runtime from backend POST /cometchat/token, REST key server-side), loginWithAuthToken, group + direct 1:1 threads, group/1:1 voice+video, dispatcher intervene, admin audit via backend. package-lock churn (many `-dev: true` removals, react-markdown/micromark/syntax-highlighter subtree) is transitive fallout of the uikit-react dep, not an unrelated refactor. Only .env.example is present; no committed secrets."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 1,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 0.0,
+    "tokens": {
+      "input": 28010,
+      "output": 93389
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "React UI Kit message list container height layout won't scroll flex CSS embed",
+        "relevance": 2,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": true
+      }
+    ],
+    "coverage_gaps": [
+      "No docs-mcp page or troubleshooting entry documents the container-height contract for a hand-composed header+list+composer layout: the kit's message-list root renders with inline `height:inherit` and its inner `.cometchat-message-list__body` uses `height:100%; overflow-y:auto`, so an app wrapper with no definite `height` collapses the scroller to the header height (~63px). The quickstart bundle only demonstrates the all-in-one `<CometChatConversationsWithMessages />` and never covers manual composition.",
+      "An empty-string docs-mcp query was issued (no useful retrieval), indicating either an agent query-construction artifact or a docs bundle that returns nothing on degenerate input."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W1: chat root collapsed to 63px)",
+        "tag": "skills",
+        "auto_caught": true,
+        "issue_id": "W1",
+        "tier": "runtime",
+        "remediation_applied": true,
+        "remediation_worked": false
+      },
+      {
+        "issue": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract that caused the collapse; ground truth for the fix had to be reverse-engineered from the installed `@cometchat/chat-uikit-react/dist` bundle's inline styles rather than any skill or doc.",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "Latent same-class defect left unfixed: the sibling kit scroller panes `.cc-members` and `.cc-messages-list` depend on the identical `height:inherit`/`height:100%` chain but were deliberately left untouched. If those panes are used (conversation-list inbox, group members), they will collapse the same way the message list did. The agent scoped the fix to only the named 'chat root' without hardening the equivalent scrollers.",
+        "tag": "agent"
+      },
+      {
+        "issue": "The collapse\u2192fixed transition was not verified against the actual Playwright detector (chat.mjs) \u2014 it requires live CometChat credentials absent from the repo. The fix rests on CSS/flexbox reasoning plus a passing tsc+vite build, not observed runtime behavior, so the scroll fix is unconfirmed end-to-end.",
+        "tag": "agent"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.",
+        "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Add a docs-mcp page in the react-uikit bundle documenting the container-height contract for manual composition (header + list + composer), including the required definite-height chain and the `height:inherit` behavior of the kit root, so a docs query on 'message list won't scroll / container height' returns an authoritative answer instead of only the all-in-one quickstart component.",
+        "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "In the same troubleshooting entry, note that the definite-height requirement applies to ALL kit scroller panes \u2014 message list, conversation/inbox list, and members list \u2014 so integrators harden every embedded scroller rather than only the one that visibly broke first.",
+        "motivated_by": "Latent same-class defect left unfixed on `.cc-members` and `.cc-messages-list`.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": [
+      {
+        "attempt": 1,
+        "issue_ids": [
+          "W1"
+        ],
+        "prompt_snippet": "# Phase B \u2014 Targeted Remediation (heal pass)\n\nYou already integrated CometChat into this app on branch\n`feature/cometchat-integration`. An automated check caught a **specific, known\nintegration defect** in the code you committed. Your ONLY job now is to fix that\none defect \u2014 surgically \u2014 and nothing else.\n\nThis is **not** a re-integration. Do not redo the integration, do not restructure,\ndo not \"improve\" anything that is already working. Treat everything outside the\nnamed defect as frozen.\n\n## What was caught\n\nThe following detector(s) fired against your committed code:\n\n- [W1] Web chat won't ",
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_clock_seconds": 1101.4,
+        "transcript_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/delivery/web/phaseB_heal_v1.jsonl",
+        "run_log_path": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/delivery/web/phaseB_heal_v1_toollog.jsonl",
+        "detectors_still_firing": [
+          "W1"
+        ],
+        "build_pass": true,
+        "runtime_success": false
+      }
+    ]
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Fixed:** [W1] Web chat won't scroll / chat root collapsed to 63px \u2014 `web/src/index.css`, `.cc-msg-list` rule: added `height: 100%` (single line) so the message-list flex pane exposes a definite `height` property. This gives the kit's own `CometChatMessageList` wrapper (rendered with inline `height: inherit`) a real value to inherit, which in turn lets the kit's inner `.cometchat-message-list` / `.cometchat-message-list__body` (`height: 100%`, `overflow-y: auto`) resolve a definite base and scroll instead of collapsing to content (\u2248 the 63px header). I did NOT set `overflow: hidden` or a fixed height on `.cometchat` or its wrapper; the wrapper stays bounded by the flex parent as the catalog prescribes. No other rules touched (call-overlay selectors, `.cc-thread-main`, etc. left frozen).\n\n- **Root-cause detail (why the committed `flex: 1 1 0` wasn't enough):** I extracted the kit's real DOM from `@cometchat/chat-uikit-react/dist/index.js`: the message-list root is `<div class=\"cometchat\" style=\"height:inherit;width:100%;overflow:hidden;box-sizing:border-box\">` wrapping `.cometchat-message-list` (`height:100%`). `height: inherit` copies the parent's *computed* `height` property; `.cc-msg-list` declared no `height`, so it computed to `auto`, leaving the kit's `height:100%` scroller chain with no definite base. The committed `flex: 1 1 0` grows the wrapper but doesn't make that percentage chain resolve. Confirmed the header wrapper is `height: fit-content` (\u224863px), matching the detector's exact number.\n\n- **Skills/docs used:** `cometchat-troubleshooting` skill and `docs-mcp` (`react-uikit-quickstart` bundle, `search_cometchat_docs`) \u2014 **both were effectively silent / had a gap on this specific defect.** The troubleshooting table covers init/login/CSS-import/SSR/drift but has no entry for \"chat root collapses / message list won't scroll / container height.\" The quickstart bundle demonstrates `<CometChatConversationsWithMessages />` and never documents the container-height contract for a hand-composed header+list+composer layout. Ground truth for the fix came from reading the installed kit bundle's actual inline styles, not the skills/docs. **This is a skill-gap signal: no CometChat skill or doc page addresses the manual-composition container-height / `height:inherit` scroller requirement.**\n\n- **API/class/prop I was unsure existed:** none \u2014 no new CometChat API/class/prop was introduced; the change is pure CSS on an app-owned class. Kit class names referenced for diagnosis (`.cometchat`, `.cometchat-message-list`, `.cometchat-message-list__body`) were verified directly against the installed `dist` bundle/stylesheets, not assumed.\n\n- **Web-search or guess fallback:** none. No web search used.\n\n- **Still open:** Could not reproduce the Playwright detector (`chat.mjs`) headlessly \u2014 it's external to the repo and requires live CometChat credentials (only `.env.example` is present, no gitignored `.env`), so the collapse\u2192fixed transition was verified by CSS/flexbox reasoning against the kit's real DOM plus the passing `tsc`+`vite build` gate, not by re-running the detector. The same `height:inherit`/`height:100%` dependency also exists on the sibling kit panes `.cc-members` and `.cc-messages-list`; I left them untouched to keep the diff minimal and scoped to the named \"chat root\" (message list) defect, but if the detector also checks the conversation-list or members-list scrollers, they'd need the identical one-line `height: 100%` hardening.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  },
+  "gate_execution": {
+    "specs_executed": 10,
+    "screens_judged": 1,
+    "runtime_success": false
+  }
+}

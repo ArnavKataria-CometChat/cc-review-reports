@@ -1,0 +1,120 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "delivery",
+    "platform": "backend",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "backend/express",
+    "backend": "node/express",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-17T12:20:01.520504Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [],
+    "expected_variants": [],
+    "expected_backend_auth": "node",
+    "trigger_accuracy": false,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": true,
+    "feature_completeness_pct": 90,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Clean, minimal, idiomatic backend delta. All CometChat creds read from process.env via config.cometchat; REST key documented as SERVER-ONLY and never returned to clients (/cometchat/config exposes only appId+region+enabled, token minted server-side). .gitignore hardened (.env.*, !.env.example) and .env.example carries only empty placeholders. Best-effort/self-disabling design keeps the core order API and docker build independent of CometChat reachability. UID=User.id and GUID=Order.id mappings are stable and derive from existing server-side ids; phone/email pushed to @private metadata. README/config phase A\u2192B edits are on-topic, not unrelated refactors."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": true,
+    "retry_count": 0,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 0.0,
+    "tokens": {
+      "input": 13769,
+      "output": 16730
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "REST API send message to user direct one-to-one conversation receiverType user",
+        "relevance": 4,
+        "latency_ms": null,
+        "returned_nothing": false
+      }
+    ],
+    "coverage_gaps": [
+      "No docs-mcp query backed the server-side provisioning REST surface actually used: POST /users, POST /users/{uid}/auth_tokens, POST /groups (with inline members), POST/DELETE /groups/{guid}/members, GET /groups/{guid}/messages. The agent relied on prior knowledge for these rather than docs, so their exact request/response shapes are unverified against docs-mcp."
+    ],
+    "staleness_conflicts": []
+  },
+  "summary": {
+    "ease_of_integration": 5,
+    "blockers": [
+      {
+        "issue": "On FIRST group creation, syncOrderThread relies on POST /groups carrying an inline `members: { participants }` payload to seat the customer + assigned courier. If the v3 Create Group endpoint does not honor inline members (members are normally added via POST /groups/{guid}/members), the group is created empty and participants are never seated, because the reconciling addMembers() call only runs on the ERR_GUID_ALREADY_EXISTS branch. Unverified against docs; would leave freshly-created order threads with no members.",
+        "tag": "agent"
+      },
+      {
+        "issue": "Calling is in requested scope but the backend performs no calling-specific work \u2014 it only provisions users/groups/direct-peer UIDs (identical to chat provisioning). That is all a backend can do, but it means end-to-end voice/video is entirely dependent on client components that are out of this component's diff; there is no backend evidence calling actually functions.",
+        "tag": "agent"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a docs-mcp REST-API v3 page (or skill note) that explicitly documents the server-side provisioning sequence \u2014 Create Group vs. Add Members semantics, specifically whether POST /groups accepts an inline members object or whether a separate POST /groups/{guid}/members call is mandatory to seat participants \u2014 with a canonical create-then-add-members snippet.",
+        "motivated_by": "Blocker: inline `members` on POST /groups may not seat participants on first create, and no docs-mcp query confirmed the endpoint's member semantics.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Add a docs-mcp reference for the backend auth-token flow (POST /users then POST /users/{uid}/auth_tokens, response envelope shape, apikey header, base URL {appId}.api-{region}.cometchat.io/v3) so Node/Express integrations can verify the mint-token path instead of relying on prior knowledge.",
+        "motivated_by": "Coverage gap: the server-side provisioning/auth-token REST surface actually used was implemented without any docs-mcp query backing it.",
+        "target": "docs-mcp"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n- **CometChat skill variant(s) relied on:** This is the **backend** component (Node/Express/TypeScript, CometChat **REST API v3**, server-side only) \u2014 no client UI Kit applies. I consulted **docs-mcp** (`search_cometchat_docs`) to confirm one-to-one messaging semantics (`receiverType: user`, no server-side object needed for a DIRECT conversation). The client-side skills (React/Flutter/iOS/Android) and the [X1]\u2013[A8] gotchas are all client concerns and out of scope for this backend component.\n- **Where skills/docs were wrong/missing/outdated:** None encountered. docs-mcp confirmed the direct-conversation model cleanly.\n- **Candidate hallucinations (APIs I was unsure existed):** None. The only CometChat REST calls the new code can trigger are `POST /users` via the pre-existing, already-verified `ensureUser`; no new CometChat endpoints/classes/props were introduced.\n- **Docs-escapes (left skills/docs to web-search or guess):** None. I stayed within docs-mcp + the existing verified code.\n- **Scope completed vs. incomplete:** Completed the missing backend delta \u2014 RBAC-scoped **DIRECT 1:1 peer** surface (`GET /orders/:id/chat` + `orderChatContext`), enabling the customer\u2194assigned-courier 1:1 chat + voice/video-call surface distinct from the order group. Pre-existing scope (group thread, dispatcher mediation, admin audit, token/user mapping, secrets-in-env) was already present and left untouched. Client-side wiring (opening the direct conversation, call buttons, overlays) belongs to the web/Flutter components, which are out of scope for `backend/`. Build gate (`docker build`) passes.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ]
+  },
+  "gate_execution": {
+    "specs_executed": 0,
+    "screens_judged": 0,
+    "runtime_success": true
+  }
+}
