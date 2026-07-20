@@ -8,7 +8,7 @@
 - Build pass: **3/3** · Trigger: **1/3** · Variant: **2/3**
 - Feature completeness (avg): **90.0%** · Ease (avg): **3.7/5**
 - Hallucinations: **0** · docs-escapes: **0** · retries: **2**
-- Findings by tag: {'agent': 3, 'skills': 4, 'harness-error': 2, 'SDK': 1, 'docs-mcp': 1}
+- Findings by tag: {'agent': 3, 'interop-failure': 2, 'skills': 4, 'harness-error': 2, 'SDK': 1, 'docs-mcp': 1}
 
 ## Per-platform
 
@@ -25,12 +25,12 @@
 > **Reading this report:** every finding below is a skill / docs / SDK gap observed in the baseline integration. Where a fix was applied to the demo app during review, that is a *verification aid only* — the underlying gap remains **open** until the skill, docs, or SDK is updated. Fix status never downgrades a finding.
 
 
-## Findings — gaps by owner (11 total)
+## Findings — gaps by owner (13 total)
 
 
 ### skills — the review's primary product  (4)
 
-- (android-ios) Android ghost call — the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (verified in source, not by the failing flow: the app never overrode CallListener.onCallEndedMessageReceived (a default no-op) until the fix; mobile/lib/cometchat/cometchat_service.dart now overrides it)
+- (android-ios) Android ghost call — the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up (verified in source, not by the failing flow: the app never overrode CallListener.onCallEndedMessageReceived (a default no-op) until the fix; mobile/lib/cometchat/cometchat_service.dart now overrides it) [MATRIX-CONFIRMED 2026-07-21: web-android 1:1 call, web caller hung up, android callee left alone on the ongoing-call screen with the timer running — the app's teardown fix released the SESSION but does not DISMISS the callee UI.]
 - (android-ios) Android call buttons untappable — the conversation screen renders edge-to-edge with the CometChat message header UNDER the status bar; the voice/video call buttons land in the status-bar touch region, so they are visible but untappable and a call can never be initiated (verified in source, not by the failing flow: the fix is in mobile/lib/cometchat/direct_chat_screen.dart (commit daa1ddc), a PreferredSize appBar reserving MediaQuery.padding.top, with a comment naming the status-bar touch region as the cause)
 - (android-ios) Calling is in scope but no flutter-v6 CALLING skill was loaded (only conversations + messages). The agent had to hand-roll the entire calling path from SDK source reads: the separate CometChatUIKitCalls.init, enableCalls=true, the CallNavigationContext.navigatorKey wiring in main.dart, re-arming calls after logout, and all native setup (Podfile platform 15.1 + clearing EXCLUDED_ARCHS for the arm64 simulator slice, android minSdk 26, camera/mic/bluetooth permissions). This is a skills coverage gap distinct from the specific runtime overlay bugs.
 - (android-ios) Flutter UI Kit: the CALLER cannot learn its call was answered. CometChatCallEvents.ccCallAccepted fires on the CALLEE only; the caller must subscribe to the raw SDK's CallListener.onOutgoingCallAccepted, which no skill or doc mentions. Without it a caller backgrounding a LIVE call believes the call is still ringing and sends rejectCall(cancelled), which the server refuses ('cannot update from ongoing to cancelled'), stranding the session. Compounds F1: together they make an unreleasable session the DEFAULT outcome of leaving an app mid-call.
@@ -48,6 +48,11 @@
 - (backend) On FIRST group creation, syncOrderThread relies on POST /groups carrying an inline `members: { participants }` payload to seat the customer + assigned courier. If the v3 Create Group endpoint does not honor inline members (members are normally added via POST /groups/{guid}/members), the group is created empty and participants are never seated, because the reconciling addMembers() call only runs on the ERR_GUID_ALREADY_EXISTS branch. Unverified against docs; would leave freshly-created order threads with no members.
 - (backend) Calling is in requested scope but the backend performs no calling-specific work — it only provisions users/groups/direct-peer UIDs (identical to chat provisioning). That is all a backend can do, but it means end-to-end voice/video is entirely dependent on client components that are out of this component's diff; there is no backend evidence calling actually functions.
 - (android-ios) _initCalls swallows its onError and completes successfully ('non-fatal for chat'), so if the calling SDK fails to initialize the app proceeds with calling silently broken and no user-facing signal — voice/video buttons render but calls cannot connect.
+
+### interop-failure  (2)
+
+- (web) Integration-matrix cell FAILED: web-android / call_group_single (voice_call, group) — failed at step 2 (incoming_call_visible) [deterministic 2/2 — identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.
+- (web) Integration-matrix cell FAILED: web-android / call_group_multiple (voice_call, group) — failed at step 1 (place_voice_call) [deterministic 2/2 — identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.
 
 ### harness-error  (2)
 

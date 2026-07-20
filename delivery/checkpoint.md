@@ -13,6 +13,20 @@ every later call returns busy.
 
 ✅ pass  ❌ fail  🟡 not verified
 
+## Harness-verified (Gate 6)
+
+```
+             1:1             1:1             1:1             group           group           group           
+             chat            calls single    calls multiple  chat            calls single    calls multiple  
+-------------------------------------------------------------------------------------------------------------
+web-android         ✅              ✅              ✅              ✅              ❌              ❌       
+android-ios         🟡              🟡              🟡              🟡              🟡              🟡       
+ios-web             🟡              🟡              🟡              🟡              🟡              🟡       
+
+✅ pass   ❌ fail   🟡 not verified
+4/18 passing, 6/18 run (12 never attempted)
+```
+
 ## Operator-verified (manual, at CP2)
 
 ```
@@ -34,8 +48,7 @@ ios-web             ✅              ✅              ✅              ✅      
 
 ## Matrix account health
 
-- ⚠️ user cour-003: latest substantive call is `ongoing` (v1.in.1680958092adbe18e.1784550076f3f2fb153a23da12c2f91777bc0cc0c78006ef11) — does not pin by itself, but if a LIVE client still holds it calls are genuinely busy; ensure no stray client is running.
-- ⚠️ user cust-005: latest substantive call is `ongoing` (v1.in.1680958092adbe18e.1784550076f3f2fb153a23da12c2f91777bc0cc0c78006ef11) — does not pin by itself, but if a LIVE client still holds it calls are genuinely busy; ensure no stray client is running.
+- ⚠️ matrix users ['cour-003', 'cust-005'] call-clean ✅
 
 ## Open questions for the operator
 

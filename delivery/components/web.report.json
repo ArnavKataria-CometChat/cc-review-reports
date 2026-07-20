@@ -83,7 +83,22 @@
   },
   "summary": {
     "ease_of_integration": 4,
-    "blockers": [],
+    "blockers": [
+      {
+        "issue": "Integration-matrix cell FAILED: web-android / call_group_single (voice_call, group) \u2014 failed at step 2 (incoming_call_visible) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+        "tag": "interop-failure",
+        "auto_caught": true,
+        "issue_id": "MATRIX-web-android__call_group_single",
+        "tier": "runtime"
+      },
+      {
+        "issue": "Integration-matrix cell FAILED: web-android / call_group_multiple (voice_call, group) \u2014 failed at step 1 (place_voice_call) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+        "tag": "interop-failure",
+        "auto_caught": true,
+        "issue_id": "MATRIX-web-android__call_group_multiple",
+        "tier": "runtime"
+      }
+    ],
     "improvement_suggestions": [],
     "auto_remediations": [
       {
