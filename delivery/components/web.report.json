@@ -84,29 +84,7 @@
   },
   "summary": {
     "ease_of_integration": 4,
-    "blockers": [
-      {
-        "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W1: chat root collapsed to 63px)",
-        "tag": "skills",
-        "auto_caught": true,
-        "issue_id": "W1",
-        "tier": "runtime",
-        "remediation_applied": true,
-        "remediation_worked": false
-      },
-      {
-        "issue": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract that caused the collapse; ground truth for the fix had to be reverse-engineered from the installed `@cometchat/chat-uikit-react/dist` bundle's inline styles rather than any skill or doc.",
-        "tag": "docs-mcp"
-      },
-      {
-        "issue": "Latent same-class defect left unfixed: the sibling kit scroller panes `.cc-members` and `.cc-messages-list` depend on the identical `height:inherit`/`height:100%` chain but were deliberately left untouched. If those panes are used (conversation-list inbox, group members), they will collapse the same way the message list did. The agent scoped the fix to only the named 'chat root' without hardening the equivalent scrollers.",
-        "tag": "agent"
-      },
-      {
-        "issue": "The collapse\u2192fixed transition was not verified against the actual Playwright detector (chat.mjs) \u2014 it requires live CometChat credentials absent from the repo. The fix rests on CSS/flexbox reasoning plus a passing tsc+vite build, not observed runtime behavior, so the scroll fix is unconfirmed end-to-end.",
-        "tag": "agent"
-      }
-    ],
+    "blockers": [],
     "improvement_suggestions": [
       {
         "suggestion": "Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.",
@@ -166,5 +144,36 @@
     "specs_executed": 10,
     "screens_judged": 1,
     "runtime_success": false
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W1: chat root collapsed to 63px)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "W1",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "retracted": true,
+      "retraction_reason": "W1 'chat root collapsed to 63px' was a MEASUREMENT artifact, not an app defect. The kit stamps the `cometchat` class on ~180 elements per page, so the probe's first-match querySelector('.cometchat') measured a 63px HEADER wrapper. The real scroller root \u2014 the .cometchat element CONTAINING .cometchat-message-list \u2014 is 403px and scrolls correctly. Nothing was ever clipped."
+    },
+    {
+      "issue": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract that caused the collapse; ground truth for the fix had to be reverse-engineered from the installed `@cometchat/chat-uikit-react/dist` bundle's inline styles rather than any skill or doc.",
+      "tag": "docs-mcp",
+      "retracted": true,
+      "retraction_reason": "Predicated on W1: documents a 'container-height contract that caused the collapse'. There was no collapse, so there is no contract violation this gap explains. Any real docs gap here must be re-established on its own evidence, not inherited from a measurement artifact."
+    },
+    {
+      "issue": "Latent same-class defect left unfixed: the sibling kit scroller panes `.cc-members` and `.cc-messages-list` depend on the identical `height:inherit`/`height:100%` chain but were deliberately left untouched. If those panes are used (conversation-list inbox, group members), they will collapse the same way the message list did. The agent scoped the fix to only the named 'chat root' without hardening the equivalent scrollers.",
+      "tag": "agent",
+      "retracted": true,
+      "retraction_reason": "Predicated on W1: a 'latent same-class defect' in sibling scrollers that would collapse 'the same way the message list did'. The message list never collapsed."
+    },
+    {
+      "issue": "The collapse\u2192fixed transition was not verified against the actual Playwright detector (chat.mjs) \u2014 it requires live CometChat credentials absent from the repo. The fix rests on CSS/flexbox reasoning plus a passing tsc+vite build, not observed runtime behavior, so the scroll fix is unconfirmed end-to-end.",
+      "tag": "agent",
+      "retracted": true,
+      "retraction_reason": "Predicated on W1: faults the agent for not verifying a collapse-to-fixed transition. There was no collapse to verify."
+    }
+  ]
 }

@@ -30,10 +30,11 @@
     "cometchat-skills:cometchat-troubleshooting"
   ],
   "blocker_tags": {
-    "agent": 6,
-    "skills": 5,
-    "docs-mcp": 1,
-    "harness-error": 2
+    "agent": 3,
+    "skills": 4,
+    "harness-error": 2,
+    "sdk": 1,
+    "docs-mcp": 1
   },
   "blockers": [
     {
@@ -47,46 +48,11 @@
       "tag": "agent"
     },
     {
-      "component": "web",
-      "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W1: chat root collapsed to 63px)",
-      "tag": "skills",
-      "auto_caught": true,
-      "issue_id": "W1",
-      "tier": "runtime",
-      "remediation_applied": true,
-      "remediation_worked": false
-    },
-    {
-      "component": "web",
-      "issue": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract that caused the collapse; ground truth for the fix had to be reverse-engineered from the installed `@cometchat/chat-uikit-react/dist` bundle's inline styles rather than any skill or doc.",
-      "tag": "docs-mcp"
-    },
-    {
-      "component": "web",
-      "issue": "Latent same-class defect left unfixed: the sibling kit scroller panes `.cc-members` and `.cc-messages-list` depend on the identical `height:inherit`/`height:100%` chain but were deliberately left untouched. If those panes are used (conversation-list inbox, group members), they will collapse the same way the message list did. The agent scoped the fix to only the named 'chat root' without hardening the equivalent scrollers.",
-      "tag": "agent"
-    },
-    {
-      "component": "web",
-      "issue": "The collapse\u2192fixed transition was not verified against the actual Playwright detector (chat.mjs) \u2014 it requires live CometChat credentials absent from the repo. The fix rests on CSS/flexbox reasoning plus a passing tsc+vite build, not observed runtime behavior, so the scroll fix is unconfirmed end-to-end.",
-      "tag": "agent"
-    },
-    {
       "component": "android-ios",
       "issue": "Android ghost call \u2014 the UI Kit's ongoing-call activity is not finished when the remote party ends a 1:1 call; onCallEndedMessageReceived is a default no-op the app never overrides, so the local user is stuck in a conference-of-one until they manually hang up ([android] Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: \"(?s).*Calling.*\" is visible)\n\n1/1 Flow Failed\n\n\n)",
       "tag": "skills",
       "auto_caught": true,
       "issue_id": "A4",
-      "tier": "runtime",
-      "remediation_applied": false,
-      "remediation_worked": false
-    },
-    {
-      "component": "android-ios",
-      "issue": "Android incoming-call overlay covers the conversation header \u2014 CometChatIncomingCall (UIKit v6) mounted as an always-on overlay renders its Accept/Decline chrome with no bound call, hiding the header (peer name, back, voice/video call buttons) so a call can never be started ([android] Maestro assertion failed [calling.yaml] on android: \nWaiting for flows to complete...\n[Failed] delivery-android-calling-smoke (1m 9s) (Assertion is false: \"(?s).*Calling.*\" is visible)\n\n1/1 Flow Failed\n\n\n)",
-      "tag": "skills",
-      "auto_caught": true,
-      "issue_id": "A6",
       "tier": "runtime",
       "remediation_applied": false,
       "remediation_worked": false
@@ -128,13 +94,38 @@
     },
     {
       "component": "android-ios",
-      "issue": "build_pass is false in the AUTO facts, contradicting the integration summary's claim that 'both native build gates green.' The self-reported build success is not corroborated by the harness; the overclaim masks whether the apk/simulator builds actually succeeded.",
+      "issue": "_initCalls swallows its onError and completes successfully ('non-fatal for chat'), so if the calling SDK fails to initialize the app proceeds with calling silently broken and no user-facing signal \u2014 voice/video buttons render but calls cannot connect.",
       "tag": "agent"
     },
     {
       "component": "android-ios",
-      "issue": "_initCalls swallows its onError and completes successfully ('non-fatal for chat'), so if the calling SDK fails to initialize the app proceeds with calling silently broken and no user-facing signal \u2014 voice/video buttons render but calls cannot connect.",
-      "tag": "agent"
+      "issue": "Flutter SDK: CometChat.endCall() can NEVER end a connected call \u2014 it omits the server-required `joinedAt`, so the server rejects it and the session stays `ongoing` forever. CometChat then busy-rejects every later call for that user, to ANY peer, permanently; the state is server-side so it survives logout, reinstall and a device wipe. Measured on device: `endCall ERR The joinedAt post parameter is required to end a call`. Every layer beneath the public API accepts the parameter (updateCallStatusRaw(id,status,{joinedAt}), CallsApi.updateCallStatus(id,status,joinedAt)) and the Android SDK carries it \u2014 the Flutter port dropped it. Any app whose call ends by anything other than the kit's own hang-up button (backgrounded, evicted, force-quit, crashed) permanently bricks calling for that user. Worse, it is invisible from the console: the dashboard's Calls view reads the WebRTC log, which correctly shows `ended`, while the busy check reads the chat-side call record, which is stuck at `ongoing`. Workaround verified: PUT {appId}.apiclient-{region}.cometchat.io/v3.0/calls/{sessionId} {\"status\":\"ended\",\"joinedAt\":<unix>} with appId + a USER authToken.",
+      "tag": "sdk",
+      "auto_caught": false,
+      "issue_id": "F1",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": true
+    },
+    {
+      "component": "android-ios",
+      "issue": "Flutter UI Kit: the CALLER cannot learn its call was answered. CometChatCallEvents.ccCallAccepted fires on the CALLEE only; the caller must subscribe to the raw SDK's CallListener.onOutgoingCallAccepted, which no skill or doc mentions. Without it a caller backgrounding a LIVE call believes the call is still ringing and sends rejectCall(cancelled), which the server refuses ('cannot update from ongoing to cancelled'), stranding the session. Compounds F1: together they make an unreleasable session the DEFAULT outcome of leaving an app mid-call.",
+      "tag": "skills",
+      "auto_caught": false,
+      "issue_id": "F2",
+      "tier": "runtime",
+      "remediation_applied": true,
+      "remediation_worked": true
+    },
+    {
+      "component": "android-ios",
+      "issue": "Flutter UI Kit docstring is actively misleading: CometChat.clearActiveCall() is documented in call_event_service.dart:604 as 'Always clears the SERVER-SIDE state', but it only clears a device-local cache. It is the API an integrator reaches for when calls start returning busy, and it silently no-ops against exactly that state. This misdirection is plausibly why this whole class of bug survives review.",
+      "tag": "docs-mcp",
+      "auto_caught": false,
+      "issue_id": "F3",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false
     }
   ],
   "retracted": [],
