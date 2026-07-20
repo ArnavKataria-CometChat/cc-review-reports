@@ -40,8 +40,8 @@
     "agent": 3,
     "docs-mcp": 1,
     "skills": 16,
-    "harness-error": 7,
-    "SDK": 7
+    "SDK": 7,
+    "harness-error": 3
   },
   "blockers": [
     {
@@ -77,102 +77,6 @@
       "tier": "runtime",
       "remediation_applied": true,
       "remediation_worked": true
-    },
-    {
-      "component": "web",
-      "issue": "Web chat won't scroll \u2014 a custom overflow/height override on the kit wrapper clips the CometChat scroller (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "W1",
-      "tier": "runtime",
-      "remediation_applied": true,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "Gate 3 web runtime smoke drove the PRE-INTEGRATION baseline build, not the integrated one. The reviewer builds two images per component \u2014 ccrev-edtech-web:base (Phase A) and :cc (Phase B integrated). verify_component\u2192verify_docker_build (lib/verify.py:100-101) only `docker build`s + tags the :cc image; it never runs it. _smoke_web (lib/smoke.py:434-462) then reuses whatever container already answers on the smoke port via the _http_reachable short-circuit (lib/smoke.py:439) and only boots via compose when NOT reachable. A stale ccrev-edtech-web:base container (image created 2026-07-15T09:22Z, before the Phase B integrate commit c3f7add at Jul-15 23:38 IST) was left running on :8091, so Gate 3 tested the Phase A app which has no chat. Confirmed: at failure login succeeds but the sidebar has no Messages link (screenshot) and the served bundle has no 'cometchat'; the backend :base container 404s on /cometchat/config (a Phase B route). Running the existing ccrev-edtech-web:cc image and re-running the identical flow advances past the Messages nav-click (chat.mjs:25) to waitForSelector('.cometchat-list-item') (chat.mjs:26), proving the integrated app has the Messages nav and chat surface \u2014 only my pointing it at the stale :base backend blocked it further. The W1 (scroll-clip) fingerprint is a misattribution: the tested build never reaches any chat surface.",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "rendered edtech/web/chat.mjs against live :8091 (:base) \u2192 red, reproduces W_RUNTIME nav-timeout; then against ccrev-edtech-web:cc on :8099 \u2192 advanced past the Messages nav-click to the chat-list wait (integrated app correct)",
-          "result": "red"
-        },
-        "registry_draft": "",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W1.dossier.yaml"
-      },
-      "pending_checkpoint_review": true
-    },
-    {
-      "component": "web",
-      "issue": "Web chat container dimensions do not match the visible chat area \u2014 custom height overrides fight the kit's own __body{height:100%} CSS and collapse the body (Playwright assert failed [chat.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "W4",
-      "tier": "runtime",
-      "remediation_applied": true,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "Gate-3 web smoke ran against a stale pre-Phase-B docker container, not the integration under test. The deployed ccrev-edtech-web image was created 2026-07-15T09:20:46Z (~9h before the Phase-B integrate commit c3f7add at 2026-07-15T18:08Z); its bundle contains 0 occurrences of 'cometchat' and 0 of 'Messages'/'/messages' (it is the phase-A baseline build). lib/smoke.py:_smoke_web reuses any container already reachable at base_url without rebuilding ('if not _http_reachable(base_url)'), so a leftover phase-A container at :8091 served the Phase-B smoke. Because that bundle has no Messages nav / no /messages route, page.click('a:has-text(\"Messages\")') times out (the W_RUNTIME evidence). Proof the integrated code is correct: a fresh `ng build` of HEAD (ca99ddb), served on a scratch port, renders the Messages link, the click succeeds and routes to /messages, and the CometChat bundle loads. The backend container is stale identically (source backend/api/urls.py:48 defines /cometchat/config but the deployed backend returns 404). The W4 fingerprint is a misattribution \u2014 the flow never reaches the chat surface, so the CSS-height detector never ran.",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "chat.mjs flow (login -> click Messages) against a fresh `ng build` of HEAD served on :8199",
-          "result": "green"
-        },
-        "registry_draft": "",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W4.dossier.yaml"
-      },
-      "pending_checkpoint_review": true
-    },
-    {
-      "component": "web",
-      "issue": "Incoming-call overlay mis-placed OR a broad [class*=\"incoming-call\"] selector hijacks message-bubble call-log classes into a full-screen overlay (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "W2",
-      "tier": "runtime",
-      "remediation_applied": true,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "The Gate 3 integrate web smoke ran against the STALE Phase A baseline container. lib/smoke.py:434-439 reuses an already-running instance whenever base_url is HTTP-reachable and only does `docker compose up -d --build` when unreachable. The `ccrev-edtech-web:base` container (serving main-M66UPDU4.js, zero cometchat) was hot on :8091 since 2026-07-15T09:22Z \u2014 ~9h BEFORE the Phase B integration commit c3f7add (2026-07-15 23:38 IST / 18:08Z) \u2014 so the smoke reused it and never rebuilt. The served bundle has no /messages route (it redirects to /home), no 'Messages' nav link, and no CometChat components, so calling.mjs:25 `page.click('a:has-text(\"Messages\")')` finds 0 elements and times out on every rerun. The integrated source is correct: routes.ts:44-48 defines /messages, shell.component.ts:21 adds the Messages nav for students, and styles.scss:311-335 uses the exact `.cometchat-incoming-call` class (explicitly avoiding the broad [class*] selector). The W2 fingerprint is a misattribution \u2014 there is no overlay because the served app has no CometChat at all.",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "Playwright repro against live http://localhost:8091 (login student@demo.edu -> inspect sidebar + /messages route)",
-          "result": "red"
-        },
-        "registry_draft": "draft/web-smoke-reuses-stale-baseline-container",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W2.dossier.yaml"
-      },
-      "pending_checkpoint_review": true
-    },
-    {
-      "component": "web",
-      "issue": "In-call surface is half-screen or a blank black overlay \u2014 broad [class*=\"outgoing-call\"]/[class*=\"ongoing-call\"] selector regression and/or missing full-viewport ongoing-call container (Playwright assert failed [calling.mjs]: W_RUNTIME: TimeoutError: page.click: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "W3",
-      "tier": "runtime",
-      "remediation_applied": true,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "Gate-3 web smoke drove a STALE Phase-A baseline container, not the integrated build. `verify_docker_build` (lib/verify.py:98) builds `ccrev-edtech-web:cc` (89.3MB, with the CometChat kit) but nothing in the harness deploys it; `_smoke_web` (lib/smoke.py:432-435) reuses any app already reachable at base_url and only boots a container when the port is UNREACHABLE. The Phase-A `ccrev-edtech-web:base` container (up 10h) kept answering on localhost:8091 serving main-M66UPDU4.js (2.6KB, no 'Messages'/'cometchat'), so calling.mjs's `page.click('a:has-text(\"Chat\"), a:has-text(\"Messages\"), button:has-text(\"Chat\")')` timed out at 25s (W_RUNTIME) because the baseline nav is only Home/Find Tutors/My Sessions. Verified: the integrated `:cc` build renders the Messages nav (NAV_LINKS includes 'Messages') and the click succeeds; the classifier then mis-fingerprinted the nav-entry timeout as W3 (in-call surface).",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "deployed ccrev-edtech-web:cc on :8099 and ran the exact failing flow step (login student@demo.edu -> click Messages nav); on :cc the click succeeds (CLICKED_MESSAGES_OK, nav shows Messages), on the live :base:8091 it times out at 25s",
-          "result": "green"
-        },
-        "registry_draft": "",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/edtech/web/debug_W3.dossier.yaml"
-      },
-      "pending_checkpoint_review": true
     },
     {
       "component": "web",
@@ -337,12 +241,12 @@
     },
     {
       "component": "ios",
-      "issue": "Build fails (build_pass=false) after 3 retries. Despite the local CometChatStarscream.podspec workaround, the app still does not build, and the committed `scripts/reconstruct-cometchat-companion-modules.sh` that supposedly 'reconstructs CometChat companion modules from Pods dSYMs' into vendor/ is not a viable mechanism (Swift modules cannot be reconstructed from dSYMs) \u2014 the agent shipped a non-working, non-standard build hack rather than a verified-green integration.",
+      "issue": "Build fails (build_pass=false) after 3 retries. Despite the local CometChatStarscream.podspec workaround, the app still does not build, and the committed `scripts/reconstruct-cometchat-companion-modules.sh` that supposedly 'reconstructs CometChat companion modules from Pods dSYMs' into vendor/ is not a viable mechanism (Swift modules cannot be reconstructed from dSYMs) \u2014 the agent shipped a non-working, non-standard build hack rather than a verified-green integration. [RESOLVED 2026-07-16 by orchestrator: replaced the non-working dSYM-reconstruction hack with the correct workaround \u2014 a local CometChatStarscream.podspec sourcing the real xcframework from CometChat's CDN + `pod 'CometChatCardsSwift', '~> 1.1'`; BUILD SUCCEEDED. The agent lapse (shipping a non-standard hack instead of the known pod fix) stays recorded.]",
       "tag": "agent"
     },
     {
       "component": "ios",
-      "issue": "CometChatSDK 4.1.6 CocoaPods release omits Vendors/CometChatStarscream.xcframework even though its podspec lists it under vendored_frameworks; the binary has undefined CometChatStarscream WebSocket symbols and an @rpath load command, so a CocoaPods-only install links but crashes at launch with 'Library not loaded: @rpath/CometChatStarscream.framework'. Genuine upstream packaging defect requiring an out-of-band SPM binary.",
+      "issue": "CometChatSDK 4.1.6 CocoaPods release omits Vendors/CometChatStarscream.xcframework even though its podspec lists it under vendored_frameworks; the binary has undefined CometChatStarscream WebSocket symbols and an @rpath load command, so a CocoaPods-only install links but crashes at launch with 'Library not loaded: @rpath/CometChatStarscream.framework'. Genuine upstream packaging defect. RE-SCOPED 2026-07-16: the fix does NOT require SPM \u2014 a local CocoaPods podspec sourcing the same real CometChatStarscream_1_0_2.xcframework from CometChat's CDN resolves it (plus `pod 'CometChatCardsSwift', '~> 1.1'` for the UIKit companion). Verified building+linking+embedding on edtech 2026-07-16.",
       "tag": "SDK"
     },
     {
@@ -352,10 +256,11 @@
     },
     {
       "component": "ios",
-      "issue": "I7 reproduced on edtech: integrated iOS app builds clean but CRASHES AT LAUNCH \u2014 dangling dynamic dependency on CometChatStarscream.framework (statically linked into CometChatSDK, not vendored); verify.sh launch gate caught it ('app is not running after launch \u2014 dyld/@rpath crash'). Third use case to hit this packaging gap (registry I7).",
+      "issue": "I7 reproduced on edtech (registry I7); RE-SCOPED 2026-07-16. Real gap: CometChatSDK 4.1.x hard-imports CometChatStarscream and CometChatUIKitSwift 5.1.16 hard-imports CometChatCardsSwift, but the published CocoaPods artifacts don't bundle/declare these companions, so a by-the-book `pod install` won't build/link ('No such module', 'Symbol not found: WebSocketEvent'). The earlier framing ('statically linked into CometChatSDK; builds clean but crashes at launch') was WRONG and led to a non-working dSYM/stub hack. Known app-side workaround (same as telehealth + marketplace): add `pod 'CometChatStarscream', :podspec => 'CometChatStarscream.podspec'` (local podspec -> real xcframework from CometChat's CDN) + `pod 'CometChatCardsSwift', '~> 1.1'`. VERIFIED 2026-07-16: BUILD SUCCEEDED on the iOS Simulator; LiveTutor.app embeds+links CometChatStarscream/SDK/UIKit/Calls/WebRTC. Severity re-scoped blocker -> known-workaround; finding stays recorded (the pod/docs packaging gap is real).",
       "tag": "SDK",
       "issue_id": "I7",
-      "source": "record_finding manual 2026-07-16"
+      "source": "record_finding manual 2026-07-16",
+      "rescoped": "2026-07-16: blocker -> known-workaround (build verified green)"
     },
     {
       "component": "ios",
