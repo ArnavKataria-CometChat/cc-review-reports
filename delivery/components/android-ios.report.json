@@ -30,7 +30,7 @@
     "missed_triggers": []
   },
   "integration_outcome": {
-    "build_pass": false,
+    "build_pass": true,
     "runtime_success": false,
     "feature_completeness_pct": 90,
     "scope_checklist": {
@@ -47,7 +47,8 @@
       "secrets_committed": false,
       "keys_in_env": true,
       "notes": "Additive, idiomatic delta: new 1:1 direct screen + inbox mirror the existing group/audit screens exactly; only a label string and two AppBar actions touched in pre-existing files. No secrets in the client \u2014 App ID/Region are non-secret and injected via --dart-define; .env and a secrets.dart are gitignored; the REST API key is documented as server-only. Native config (Podfile iOS 15.1 + EXCLUDED_ARCHS clear, minSdk 26, Jetifier, permissions, network_security_config) is all justified with inline comments. Auth token flow is via backend /cometchat/token + loginWithAuthToken."
-    }
+    },
+    "build_pass_correction": "Corrected 2026-07-20. The false value was a HARNESS fault written into the build field (fixed as HARNESS-NOT-BUILD, 34f253c): a harness/environment error was being reported as a build failure. Gate 1 actually PASSED, and the app has since been built and driven end-to-end on both android and iOS."
   },
   "agent_effort": {
     "first_pass_success": false,

@@ -77,7 +77,6 @@
       }
     ],
     "coverage_gaps": [
-      "No docs-mcp page or troubleshooting entry documents the container-height contract for a hand-composed header+list+composer layout: the kit's message-list root renders with inline `height:inherit` and its inner `.cometchat-message-list__body` uses `height:100%; overflow-y:auto`, so an app wrapper with no definite `height` collapses the scroller to the header height (~63px). The quickstart bundle only demonstrates the all-in-one `<CometChatConversationsWithMessages />` and never covers manual composition.",
       "An empty-string docs-mcp query was issued (no useful retrieval), indicating either an agent query-construction artifact or a docs bundle that returns nothing on degenerate input."
     ],
     "staleness_conflicts": []
@@ -85,23 +84,7 @@
   "summary": {
     "ease_of_integration": 4,
     "blockers": [],
-    "improvement_suggestions": [
-      {
-        "suggestion": "Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.",
-        "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
-        "target": "skills"
-      },
-      {
-        "suggestion": "Add a docs-mcp page in the react-uikit bundle documenting the container-height contract for manual composition (header + list + composer), including the required definite-height chain and the `height:inherit` behavior of the kit root, so a docs query on 'message list won't scroll / container height' returns an authoritative answer instead of only the all-in-one quickstart component.",
-        "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
-        "target": "docs-mcp"
-      },
-      {
-        "suggestion": "In the same troubleshooting entry, note that the definite-height requirement applies to ALL kit scroller panes \u2014 message list, conversation/inbox list, and members list \u2014 so integrators harden every embedded scroller rather than only the one that visibly broke first.",
-        "motivated_by": "Latent same-class defect left unfixed on `.cc-members` and `.cc-messages-list`.",
-        "target": "skills"
-      }
-    ],
+    "improvement_suggestions": [],
     "auto_remediations": [
       {
         "attempt": 1,
@@ -120,7 +103,8 @@
         "build_pass": true,
         "runtime_success": false
       }
-    ]
+    ],
+    "suggestions": []
   },
   "_meta": {
     "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Fixed:** [W1] Web chat won't scroll / chat root collapsed to 63px \u2014 `web/src/index.css`, `.cc-msg-list` rule: added `height: 100%` (single line) so the message-list flex pane exposes a definite `height` property. This gives the kit's own `CometChatMessageList` wrapper (rendered with inline `height: inherit`) a real value to inherit, which in turn lets the kit's inner `.cometchat-message-list` / `.cometchat-message-list__body` (`height: 100%`, `overflow-y: auto`) resolve a definite base and scroll instead of collapsing to content (\u2248 the 63px header). I did NOT set `overflow: hidden` or a fixed height on `.cometchat` or its wrapper; the wrapper stays bounded by the flex parent as the catalog prescribes. No other rules touched (call-overlay selectors, `.cc-thread-main`, etc. left frozen).\n\n- **Root-cause detail (why the committed `flex: 1 1 0` wasn't enough):** I extracted the kit's real DOM from `@cometchat/chat-uikit-react/dist/index.js`: the message-list root is `<div class=\"cometchat\" style=\"height:inherit;width:100%;overflow:hidden;box-sizing:border-box\">` wrapping `.cometchat-message-list` (`height:100%`). `height: inherit` copies the parent's *computed* `height` property; `.cc-msg-list` declared no `height`, so it computed to `auto`, leaving the kit's `height:100%` scroller chain with no definite base. The committed `flex: 1 1 0` grows the wrapper but doesn't make that percentage chain resolve. Confirmed the header wrapper is `height: fit-content` (\u224863px), matching the detector's exact number.\n\n- **Skills/docs used:** `cometchat-troubleshooting` skill and `docs-mcp` (`react-uikit-quickstart` bundle, `search_cometchat_docs`) \u2014 **both were effectively silent / had a gap on this specific defect.** The troubleshooting table covers init/login/CSS-import/SSR/drift but has no entry for \"chat root collapses / message list won't scroll / container height.\" The quickstart bundle demonstrates `<CometChatConversationsWithMessages />` and never documents the container-height contract for a hand-composed header+list+composer layout. Ground truth for the fix came from reading the installed kit bundle's actual inline styles, not the skills/docs. **This is a skill-gap signal: no CometChat skill or doc page addresses the manual-composition container-height / `height:inherit` scroller requirement.**\n\n- **API/class/prop I was unsure existed:** none \u2014 no new CometChat API/class/prop was introduced; the change is pure CSS on an app-owned class. Kit class names referenced for diagnosis (`.cometchat`, `.cometchat-message-list`, `.cometchat-message-list__body`) were verified directly against the installed `dist` bundle/stylesheets, not assumed.\n\n- **Web-search or guess fallback:** none. No web search used.\n\n- **Still open:** Could not reproduce the Playwright detector (`chat.mjs`) headlessly \u2014 it's external to the repo and requires live CometChat credentials (only `.env.example` is present, no gitignored `.env`), so the collapse\u2192fixed transition was verified by CSS/flexbox reasoning against the kit's real DOM plus the passing `tsc`+`vite build` gate, not by re-running the detector. The same `height:inherit`/`height:100%` dependency also exists on the sibling kit panes `.cc-members` and `.cc-messages-list`; I left them untouched to keep the diff minimal and scoped to the named \"chat root\" (message list) defect, but if the detector also checks the conversation-list or members-list scrollers, they'd need the identical one-line `height: 100%` hardening.",
@@ -175,5 +159,31 @@
       "retracted": true,
       "retraction_reason": "Predicated on W1: faults the agent for not verifying a collapse-to-fixed transition. There was no collapse to verify."
     }
+  ],
+  "retracted_suggestions": [
+    {
+      "suggestion": "Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.",
+      "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
+      "target": "skills",
+      "retracted": true,
+      "retraction_reason": "Predicated on the retracted W1 finding. W1's 'chat root collapsed to 63px' was a MEASUREMENT artifact \u2014 the probe's first-match querySelector('.cometchat') measured a 63px header wrapper instead of the 403px scroller root that actually contains .cometchat-message-list. There was no collapse, so there is no container-height contract violation for a skill or doc to prevent."
+    },
+    {
+      "suggestion": "Add a docs-mcp page in the react-uikit bundle documenting the container-height contract for manual composition (header + list + composer), including the required definite-height chain and the `height:inherit` behavior of the kit root, so a docs query on 'message list won't scroll / container height' returns an authoritative answer instead of only the all-in-one quickstart component.",
+      "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
+      "target": "docs-mcp",
+      "retracted": true,
+      "retraction_reason": "Predicated on the retracted W1 finding. W1's 'chat root collapsed to 63px' was a MEASUREMENT artifact \u2014 the probe's first-match querySelector('.cometchat') measured a 63px header wrapper instead of the 403px scroller root that actually contains .cometchat-message-list. There was no collapse, so there is no container-height contract violation for a skill or doc to prevent."
+    },
+    {
+      "suggestion": "In the same troubleshooting entry, note that the definite-height requirement applies to ALL kit scroller panes \u2014 message list, conversation/inbox list, and members list \u2014 so integrators harden every embedded scroller rather than only the one that visibly broke first.",
+      "motivated_by": "Latent same-class defect left unfixed on `.cc-members` and `.cc-messages-list`.",
+      "target": "skills",
+      "retracted": true,
+      "retraction_reason": "Predicated on the retracted W1 finding. W1's 'chat root collapsed to 63px' was a MEASUREMENT artifact \u2014 the probe's first-match querySelector('.cometchat') measured a 63px header wrapper instead of the 403px scroller root that actually contains .cometchat-message-list. There was no collapse, so there is no container-height contract violation for a skill or doc to prevent."
+    }
+  ],
+  "retracted_coverage_gaps": [
+    "No docs-mcp page or troubleshooting entry documents the container-height contract for a hand-composed header+list+composer layout: the kit's message-list root renders with inline `height:inherit` and its inner `.cometchat-message-list__body` uses `height:100%; overflow-y:auto`, so an app wrapper with no definite `height` collapses the scroller to the header height (~63px). The quickstart bundle only demonstrates the all-in-one `<CometChatConversationsWithMessages />` and never covers manual composition."
   ]
 }

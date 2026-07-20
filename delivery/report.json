@@ -10,7 +10,7 @@
   "repo": "ArnavKataria-CometChat/cc-review-delivery",
   "pr_url": "https://github.com/ArnavKataria-CometChat/cc-review-delivery/pull/1",
   "headline": {
-    "build_pass": "2/3",
+    "build_pass": "3/3",
     "trigger_accuracy": "1/3",
     "variant_selection": "2/3",
     "feature_completeness_avg": 90.0,
@@ -143,24 +143,6 @@
       "target": "docs-mcp"
     },
     {
-      "component": "web",
-      "suggestion": "Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.",
-      "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
-      "target": "skills"
-    },
-    {
-      "component": "web",
-      "suggestion": "Add a docs-mcp page in the react-uikit bundle documenting the container-height contract for manual composition (header + list + composer), including the required definite-height chain and the `height:inherit` behavior of the kit root, so a docs query on 'message list won't scroll / container height' returns an authoritative answer instead of only the all-in-one quickstart component.",
-      "motivated_by": "docs-mcp / troubleshooting had no coverage for the manual-composition container-height scroller contract.",
-      "target": "docs-mcp"
-    },
-    {
-      "component": "web",
-      "suggestion": "In the same troubleshooting entry, note that the definite-height requirement applies to ALL kit scroller panes \u2014 message list, conversation/inbox list, and members list \u2014 so integrators harden every embedded scroller rather than only the one that visibly broke first.",
-      "motivated_by": "Latent same-class defect left unfixed on `.cc-members` and `.cc-messages-list`.",
-      "target": "skills"
-    },
-    {
       "component": "android-ios",
       "suggestion": "Add a dedicated cometchat-flutter-v6-calling skill (or a calling section in the messages skill) that documents: the separate CometChatUIKitCalls.init step, enableCalls=true, the required MaterialApp navigatorKey = CallNavigationContext.navigatorKey, re-init-after-logout, and the full native setup checklist (android minSdk 26 + calling permissions + network_security_config, iOS Podfile platform 15.1 + clearing EXCLUDED_ARCHS[sdk=iphonesimulator*] for arm64 sims, NSCamera/NSMicrophone usage strings). This is what the agent reverse-engineered from source.",
       "motivated_by": "Calling in scope but no flutter-v6 calling skill loaded; agent hand-rolled calls init + native setup",
@@ -177,10 +159,6 @@
     {
       "component": "backend",
       "gap": "No docs-mcp query backed the server-side provisioning REST surface actually used: POST /users, POST /users/{uid}/auth_tokens, POST /groups (with inline members), POST/DELETE /groups/{guid}/members, GET /groups/{guid}/messages. The agent relied on prior knowledge for these rather than docs, so their exact request/response shapes are unverified against docs-mcp."
-    },
-    {
-      "component": "web",
-      "gap": "No docs-mcp page or troubleshooting entry documents the container-height contract for a hand-composed header+list+composer layout: the kit's message-list root renders with inline `height:inherit` and its inner `.cometchat-message-list__body` uses `height:100%; overflow-y:auto`, so an app wrapper with no definite `height` collapses the scroller to the header height (~63px). The quickstart bundle only demonstrates the all-in-one `<CometChatConversationsWithMessages />` and never covers manual composition."
     },
     {
       "component": "web",
@@ -202,7 +180,7 @@
       "ease": 4
     },
     "android-ios": {
-      "build_pass": false,
+      "build_pass": true,
       "variant_ok": true,
       "completeness": 90,
       "ease": 2

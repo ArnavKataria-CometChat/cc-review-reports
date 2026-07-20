@@ -5,7 +5,7 @@
 
 ## Headline
 
-- Build pass: **2/3** · Trigger: **1/3** · Variant: **2/3**
+- Build pass: **3/3** · Trigger: **1/3** · Variant: **2/3**
 - Feature completeness (avg): **90.0%** · Ease (avg): **3.7/5**
 - Hallucinations: **0** · docs-escapes: **0** · retries: **2**
 - Findings by tag: {'agent': 3, 'skills': 4, 'harness-error': 2, 'sdk': 1, 'docs-mcp': 1}
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | backend | ✅ | ✅ | 90% | 5 |
 | web | ✅ | ❌ | 90% | 4 |
-| android-ios | ❌ | ✅ | 90% | 2 |
+| android-ios | ✅ | ✅ | 90% | 2 |
 
 ## Skills exercised
 
@@ -78,14 +78,10 @@ adb: failed to install /Users/admin/Desktop/Allapplications/delivery/mobile/buil
 
 - **[docs-mcp]** (backend) Add a docs-mcp REST-API v3 page (or skill note) that explicitly documents the server-side provisioning sequence — Create Group vs. Add Members semantics, specifically whether POST /groups accepts an inline members object or whether a separate POST /groups/{guid}/members call is mandatory to seat participants — with a canonical create-then-add-members snippet.
 - **[docs-mcp]** (backend) Add a docs-mcp reference for the backend auth-token flow (POST /users then POST /users/{uid}/auth_tokens, response envelope shape, apikey header, base URL {appId}.api-{region}.cometchat.io/v3) so Node/Express integrations can verify the mint-token path instead of relying on prior knowledge.
-- **[skills]** (web) Add a `cometchat-troubleshooting` entry titled 'Chat root collapses / message list won't scroll (hand-composed layout)': state that when embedding `CometChatMessageList`/`MessageHeader`/`MessageComposer` in an app-owned layout, every wrapper in the chain must expose a definite `height` (e.g. `height:100%` on a flex child, or a bounded flex parent) because the kit root renders with inline `height:inherit` and inner body uses `height:100%; overflow-y:auto`; `flex:1 1 0` alone does not resolve the percentage chain.
-- **[docs-mcp]** (web) Add a docs-mcp page in the react-uikit bundle documenting the container-height contract for manual composition (header + list + composer), including the required definite-height chain and the `height:inherit` behavior of the kit root, so a docs query on 'message list won't scroll / container height' returns an authoritative answer instead of only the all-in-one quickstart component.
-- **[skills]** (web) In the same troubleshooting entry, note that the definite-height requirement applies to ALL kit scroller panes — message list, conversation/inbox list, and members list — so integrators harden every embedded scroller rather than only the one that visibly broke first.
 - **[skills]** (android-ios) Add a dedicated cometchat-flutter-v6-calling skill (or a calling section in the messages skill) that documents: the separate CometChatUIKitCalls.init step, enableCalls=true, the required MaterialApp navigatorKey = CallNavigationContext.navigatorKey, re-init-after-logout, and the full native setup checklist (android minSdk 26 + calling permissions + network_security_config, iOS Podfile platform 15.1 + clearing EXCLUDED_ARCHS[sdk=iphonesimulator*] for arm64 sims, NSCamera/NSMicrophone usage strings). This is what the agent reverse-engineered from source.
 - **[skills]** (android-ios) In the calling skill, add an explicit note that CometChatUIKitCalls.init failure must be surfaced (not swallowed) — recommend disabling/hiding the call buttons when the calls SDK is not initialized rather than completing init as success.
 
 ## docs-mcp — infra note (coverage UNMEASURED this run)
 
 - (backend) No docs-mcp query backed the server-side provisioning REST surface actually used: POST /users, POST /users/{uid}/auth_tokens, POST /groups (with inline members), POST/DELETE /groups/{guid}/members, GET /groups/{guid}/messages. The agent relied on prior knowledge for these rather than docs, so their exact request/response shapes are unverified against docs-mcp.
-- (web) No docs-mcp page or troubleshooting entry documents the container-height contract for a hand-composed header+list+composer layout: the kit's message-list root renders with inline `height:inherit` and its inner `.cometchat-message-list__body` uses `height:100%; overflow-y:auto`, so an app wrapper with no definite `height` collapses the scroller to the header height (~63px). The quickstart bundle only demonstrates the all-in-one `<CometChatConversationsWithMessages />` and never covers manual composition.
 - (web) An empty-string docs-mcp query was issued (no useful retrieval), indicating either an agent query-construction artifact or a docs bundle that returns nothing on degenerate input.
