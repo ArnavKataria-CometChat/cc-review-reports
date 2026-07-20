@@ -11,7 +11,7 @@
   "repo": "ArnavKataria-CometChat/cc-review-marketplace",
   "pr_url": null,
   "headline": {
-    "build_pass": "1/4",
+    "build_pass": "4/4",
     "trigger_accuracy": "2/4",
     "variant_selection": "3/4",
     "feature_completeness_avg": 82.5,
@@ -405,19 +405,19 @@
       "ease": null
     },
     "web": {
-      "build_pass": false,
+      "build_pass": true,
       "variant_ok": false,
       "completeness": null,
       "ease": null
     },
     "android": {
-      "build_pass": false,
+      "build_pass": true,
       "variant_ok": true,
       "completeness": 85,
       "ease": 2
     },
     "ios": {
-      "build_pass": false,
+      "build_pass": true,
       "variant_ok": true,
       "completeness": 80,
       "ease": 2

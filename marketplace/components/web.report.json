@@ -28,7 +28,7 @@
     ]
   },
   "integration_outcome": {
-    "build_pass": false,
+    "build_pass": true,
     "runtime_success": false,
     "feature_completeness_pct": null,
     "scope_checklist": {
@@ -45,7 +45,8 @@
       "secrets_committed": null,
       "keys_in_env": null,
       "notes": ""
-    }
+    },
+    "build_pass_correction": "Corrected 2026-07-20. The false value was the HARNESS-NOT-BUILD bug (fixed 34f253c on 07-17, AFTER this run on 07-13): all four SmokeUnavailable/HarnessError paths hardcoded VerifyResult(False, False), discarding Gate 1's real verdict. This run hit that path because all three clients deferred Gate 3 with no authored smoke flows. Ground truth from phaseB_verify.log: android '==> Android build OK', ios '** BUILD SUCCEEDED **', web '\u2713 built in 1.32s' \u2014 zero failure markers in any of the three."
   },
   "agent_effort": {
     "first_pass_success": false,

@@ -5,7 +5,7 @@
 
 ## Headline
 
-- Build pass: **1/4** · Trigger: **2/4** · Variant: **3/4**
+- Build pass: **4/4** · Trigger: **2/4** · Variant: **3/4**
 - Feature completeness (avg): **82.5%** · Ease (avg): **2.0/5**
 - Hallucinations: **0** · docs-escapes: **0** · retries: **15**
 - Findings by tag: {'agent': 3, 'skills': 18, 'SDK': 1, 'harness-error': 2, 'docs-mcp': 1}
@@ -15,9 +15,9 @@
 | Platform | Build | Variant | Completeness | Ease |
 |---|---|---|---|---|
 | backend | ✅ | ✅ | None% | None |
-| web | ❌ | ❌ | None% | None |
-| android | ❌ | ✅ | 85% | 2 |
-| ios | ❌ | ✅ | 80% | 2 |
+| web | ✅ | ❌ | None% | None |
+| android | ✅ | ✅ | 85% | 2 |
+| ios | ✅ | ✅ | 80% | 2 |
 
 ## Skills exercised
 

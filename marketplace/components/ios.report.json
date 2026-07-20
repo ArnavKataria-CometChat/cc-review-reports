@@ -26,7 +26,7 @@
     "missed_triggers": []
   },
   "integration_outcome": {
-    "build_pass": false,
+    "build_pass": true,
     "runtime_success": false,
     "feature_completeness_pct": 80,
     "scope_checklist": {
@@ -43,7 +43,8 @@
       "secrets_committed": false,
       "keys_in_env": true,
       "notes": "Visible diff is dominated by large committed SDK stub .swiftinterface files under ios/CometChatStubs/ (multiple 800+ line files); these are vendored SDK ground-truth interfaces, not integration code, and bloat the diff. The actual app/backend integration code is not present in the truncated diff, so chat/calling/RBAC/auth claims are graded largely from the INTEGRATION SUMMARY. Per summary, backend auth-token flow keeps app credentials server-side (no client secrets), which is correct. Build did NOT pass (auto ground truth), contradicting the summary's 'clean build + launch smoke' claim."
-    }
+    },
+    "build_pass_correction": "Corrected 2026-07-20. The false value was the HARNESS-NOT-BUILD bug (fixed 34f253c on 07-17, AFTER this run on 07-13): all four SmokeUnavailable/HarnessError paths hardcoded VerifyResult(False, False), discarding Gate 1's real verdict. This run hit that path because all three clients deferred Gate 3 with no authored smoke flows. Ground truth from phaseB_verify.log: android '==> Android build OK', ios '** BUILD SUCCEEDED **', web '\u2713 built in 1.32s' \u2014 zero failure markers in any of the three."
   },
   "agent_effort": {
     "first_pass_success": false,

@@ -30,7 +30,7 @@
     "missed_triggers": []
   },
   "integration_outcome": {
-    "build_pass": false,
+    "build_pass": true,
     "runtime_success": false,
     "feature_completeness_pct": 85,
     "scope_checklist": {
@@ -47,7 +47,8 @@
       "secrets_committed": false,
       "keys_in_env": true,
       "notes": "Changes are tightly scoped to android/ and idiomatic: credential-free bootstrap (POST /cometchat/token \u2192 init \u2192 loginWithAuthToken), no CometChat keys anywhere in the app, scoped CometChatTheme only on chat/call activities, and cleartext re-permitted only for local dev hosts. Legacy calls stubs and gradle changes (minSdk 28, Jetifier, annotations-java5 exclude) are justified with comments. Note: the summary claims a passing build gate but auto_facts report build_pass=false, so the delivered diff is not verified to compile."
-    }
+    },
+    "build_pass_correction": "Corrected 2026-07-20. The false value was the HARNESS-NOT-BUILD bug (fixed 34f253c on 07-17, AFTER this run on 07-13): all four SmokeUnavailable/HarnessError paths hardcoded VerifyResult(False, False), discarding Gate 1's real verdict. This run hit that path because all three clients deferred Gate 3 with no authored smoke flows. Ground truth from phaseB_verify.log: android '==> Android build OK', ios '** BUILD SUCCEEDED **', web '\u2713 built in 1.32s' \u2014 zero failure markers in any of the three."
   },
   "agent_effort": {
     "first_pass_success": false,
