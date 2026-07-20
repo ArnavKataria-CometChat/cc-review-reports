@@ -88,10 +88,6 @@
     "ease_of_integration": 2,
     "blockers": [
       {
-        "issue": "Build does not pass in the target environment (auto build_pass=false) after 7 retries, despite the INTEGRATION SUMMARY asserting a 'clean build and launch smoke'. Final integration state does not compile/link, and verification was over-reported.",
-        "tag": "agent"
-      },
-      {
         "issue": "[I7] iOS skill gotcha is wrong for CometChatSDK 4.1.6: it states CometChatStarscream is statically linked and an empty stub resolves the launch crash. In reality CometChatSDK.framework references a real Starscream symbol (WebSocketEvent.disconnected) at runtime; the empty stub only advances the crash from 'Library not loaded' to 'Symbol not found'. The real fix (pull CometChatStarscream 1.0.2 xcframework from CometChat CDN) is undocumented in skills.",
         "tag": "skills"
       },
@@ -191,5 +187,13 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "Build does not pass in the target environment (auto build_pass=false) after 7 retries, despite the INTEGRATION SUMMARY asserting a 'clean build and launch smoke'. Final integration state does not compile/link, and verification was over-reported.",
+      "tag": "agent",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 the build PASSED and the agent was truthful. Same harness bug that corrupted delivery (HARNESS-NOT-BUILD, fixed in 34f253c on 2026-07-17, AFTER marketplace ran on 07-13): all four SmokeUnavailable/HarnessError paths hardcoded VerifyResult(False, False), discarding Gate 1's real verdict. Marketplace hit that path because all three client components deferred Gate 3 \u2014 android/ios/web smoke_unavailable.txt all read 'use case has no authored smoke flows' and the smoke/ dirs are empty. Ground truth: android phaseB_verify.log ends 'BUILD SUCCESSFUL in 4s / ==> Android build OK'; ios ends '** BUILD SUCCEEDED ** / ==> iOS build succeeded.'. The 'after N retries' premise is a second field misread \u2014 lib/report.py:171 sets retry_count from signal.tool_error_count (agent TOOL errors), not build retries. Independent corroboration: A6/A7/A8 and I8-I11 were all found by driving the app LIVE on emulator/simulator the same day, which a diff that 'does not compile as-is' could not support."
+    }
+  ]
 }

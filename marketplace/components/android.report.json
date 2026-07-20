@@ -109,10 +109,6 @@
     "ease_of_integration": 2,
     "blockers": [
       {
-        "issue": "auto_facts.build_pass=false with retry_count=3, yet the INTEGRATION SUMMARY claims a passing build gate. The delivered diff does not compile/build as-is; the overclaim of a green build gate is itself a defect and the root cause of the failure was not surfaced.",
-        "tag": "agent"
-      },
-      {
         "issue": "Kotlin-Views message-header call-button visibility API is misdocumented: skills/gotcha say hideVoiceCallButton/hideVideoCallButton (Compose-only); the Views CometChatMessageHeader has no such setters and requires setVoiceCallButtonVisibility(int)/setVideoCallButtonVisibility(int). Copying the documented names verbatim would not compile.",
         "tag": "skills"
       },
@@ -123,10 +119,6 @@
       {
         "issue": "Contradictory Calls-init guidance: builder-settings claims setEnableCalling(true) auto-inits the Calls SDK while gotcha X1 requires an explicit CometChatCalls.init, leaving integrators to guess. The agent worked around it by doing both.",
         "tag": "skills"
-      },
-      {
-        "issue": "Call-lifecycle APIs used (CometChatEvents.callEvents Flow with CometChatCallEvent.CallEnded, plus CometChat.clearActiveCall) are asserted-verified only via javap and are not corroborated by any docs-mcp result; given the failed build they are a plausible unverified surface and lack authoritative documentation.",
-        "tag": "docs-mcp"
       },
       {
         "issue": "Incoming-call overlay covers the conversation header (android). CometChatIncomingCall (UIKit v6.0.3) was embedded as an always-mounted match_parent overlay on the assumption it 'renders nothing until a call arrives'; it actually renders its Accept/Decline chrome unconditionally (no bound call), permanently covering the message header \u2014 peer identity, back button, and the voice/video call buttons \u2014 so a call can never be started from the thread. Verified with a freshly-provisioned user in a zero-history thread (0 incoming-call events in logcat) and with both parties of a 1:1 seeing it simultaneously. FIXED: keep the widget GONE and gate visibility on an incoming-call StateFlow<Call?> (set on onIncomingCallReceived, cleared on cancel/reject/accept/end) \u2014 the pattern the telehealth build used.",
@@ -179,6 +171,16 @@
         },
         "pending_checkpoint_review": true,
         "review_question": "Optional: one real-device call to fully rule the emulator in/out; rotation counter-evidence already suggests app/kit first-mount bug"
+      },
+      {
+        "issue": "docs-mcp INDEXER defect: the index strips inline code spans, so API names that appear only inside backticks are unsearchable. Measured on _docs-mcp/data/index.sqlite: the indexed body of /ui-kit/android/v6/events contains ZERO occurrences of `callEvents`, `CallEvent` or `Ended`, and the source's API table row is flattened to '| Event flows | , , , , , |'. The underlying documentation is correct and complete (events.mdx:47 tables CometChatEvents.callEvents with a full Kotlin collect sample at ~162-199; calls/v4/android/call-session.mdx:386-403 documents clearActiveCall() with Java and Kotlin samples) \u2014 it simply cannot be retrieved. This makes docs-mcp report false coverage gaps for correctly-documented APIs, and an integrating agent that trusts a docs-mcp miss will conclude an API is undocumented and hand-roll it. Discovered while auditing a finding that blamed the docs; the docs were fine, the index was not.",
+        "tag": "docs-mcp",
+        "auto_caught": false,
+        "issue_id": "DM-INDEX-CODESPAN",
+        "tier": "static",
+        "remediation_applied": false,
+        "remediation_worked": false,
+        "platform": "android"
       }
     ],
     "improvement_suggestions": [
@@ -257,5 +259,19 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "auto_facts.build_pass=false with retry_count=3, yet the INTEGRATION SUMMARY claims a passing build gate. The delivered diff does not compile/build as-is; the overclaim of a green build gate is itself a defect and the root cause of the failure was not surfaced.",
+      "tag": "agent",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 the build PASSED and the agent was truthful. Same harness bug that corrupted delivery (HARNESS-NOT-BUILD, fixed in 34f253c on 2026-07-17, AFTER marketplace ran on 07-13): all four SmokeUnavailable/HarnessError paths hardcoded VerifyResult(False, False), discarding Gate 1's real verdict. Marketplace hit that path because all three client components deferred Gate 3 \u2014 android/ios/web smoke_unavailable.txt all read 'use case has no authored smoke flows' and the smoke/ dirs are empty. Ground truth: android phaseB_verify.log ends 'BUILD SUCCESSFUL in 4s / ==> Android build OK'; ios ends '** BUILD SUCCEEDED ** / ==> iOS build succeeded.'. The 'after N retries' premise is a second field misread \u2014 lib/report.py:171 sets retry_count from signal.tool_error_count (agent TOOL errors), not build retries. Independent corroboration: A6/A7/A8 and I8-I11 were all found by driving the app LIVE on emulator/simulator the same day, which a diff that 'does not compile as-is' could not support."
+    },
+    {
+      "issue": "Call-lifecycle APIs used (CometChatEvents.callEvents Flow with CometChatCallEvent.CallEnded, plus CometChat.clearActiveCall) are asserted-verified only via javap and are not corroborated by any docs-mcp result; given the failed build they are a plausible unverified surface and lack authoritative documentation.",
+      "tag": "docs-mcp",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 both legs of the stated cause are false. (1) 'given the failed build these are a plausible unverified surface' \u2014 the build passed (see the build retraction), and the APIs compiled and shipped: ChatManager.kt:118-123 collects CometChatEvents.callEvents / CometChatCallEvent.CallEnded and :289 calls CometChat.clearActiveCall(). (2) 'lack authoritative documentation' \u2014 they ARE documented: ui-kit/android/v6/events.mdx:47 tables `CometChatEvents.callEvents` with a full Kotlin collect sample (~162-199), and calls/v4/android/call-session.mdx:386-403 documents clearActiveCall() with Java and Kotlin samples. The docs-mcp miss is real but has a DIFFERENT cause, recorded separately as an indexer defect: the index strips inline code spans, so the indexed body of that page contains zero occurrences of callEvents/CallEvent/Ended and the API table row is flattened to '| Event flows | , , , , , |'. An indexer bug, not a documentation gap."
+    }
+  ]
 }

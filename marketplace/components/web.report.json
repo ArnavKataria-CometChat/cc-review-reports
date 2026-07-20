@@ -75,12 +75,6 @@
         "source": "record_finding manual 2026-07-14"
       },
       {
-        "issue": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
-        "tag": "agent",
-        "issue_id": "W6",
-        "source": "record_finding manual 2026-07-14"
-      },
-      {
         "issue": "CometChat UIKit React v6 renders every component functional-but-UNSTYLED (no message bubbles, avatars/icons/call-buttons collapse to blank boxes, composer looks broken) when the app does not import the kit's design-token stylesheet '@cometchat/chat-uikit-react/css-variables.css'. The chat is fully operable (messages send/receive, calls place) so the failure is purely visual and silent.",
         "tag": "skills",
         "issue_id": "W9",
@@ -168,5 +162,15 @@
       "docs_mcp.staleness_conflicts",
       "summary.*"
     ]
-  }
+  },
+  "retracted_blockers": [
+    {
+      "issue": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
+      "tag": "agent",
+      "issue_id": "W6",
+      "source": "record_finding manual 2026-07-14",
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 one failure, two competing causes; the other one is proven. W6 blames W5 (web chat/calling UI missing from committed source). W5 was FIXED on 2026-07-14 by 00efab6, and the same choreography still failed afterwards: gate6/one_to_one_voice_w6verify/result.json (07-15 16:39) and \u2026_w6verify2 (16:46) both record step 4 call_connected 'timed out (20000ms)' on BOTH clients. So the named cause was falsified by fixing it. The operative cause is W6-ROOT (tagged SDK), verified verbatim in the shipped bundle: @cometchat/chat-uikit-react v6.5.3 dist/index.js contains `var mb=null;try{mb=require(\"@cometchat/calls-sdk-javascript\")}catch(e){}var pb=mb?.CometChatCalls;` \u2014 under Vite ESM `require` is undefined, pb stays null, enableCalling() no-ops and no RTCPeerConnection is built. Additionally W6's own evidence is disavowed in the same report: G6-HOLLOW names W6 explicitly and says all pre-fix Gate 6 verdicts were built on hollow no-op steps and must be treated as connect-evidence-free. Tag compounded it: W6 is `agent` (blames the integrator) when the defect is SDK packaging."
+    }
+  ]
 }

@@ -34,7 +34,7 @@
     "cometchat-skills:cometchat-ios"
   ],
   "blocker_tags": {
-    "agent": 6,
+    "agent": 3,
     "skills": 18,
     "SDK": 1,
     "harness-error": 2,
@@ -46,13 +46,6 @@
       "issue": "Web CometChat chat/calling UI is MISSING from the committed feature-branch source. The running docker web build serves a full working chat (CometChat conversations, 1:1 message header with voice/video call buttons, message list/composer \u2014 .cometchat-* DOM), but git 'diff main..feature/cometchat-integration -- web' shows ONLY package.json/lock, api/endpoints.ts, api/types.ts, cometchat/errors.ts, cometchat/ids.ts changed \u2014 NO chat component, NO @cometchat/chat-uikit-react import, NO /messages route, NO CometChatMessages/MessageHeader anywhere in web/src (34 tsx/ts files, all grep-clean). So the deliverable web app was built from an uncommitted/lost version; rebuilding from HEAD yields the SDK deps + token endpoint but NO chat. Likely lost when the Phase B re-integration hit the usage limit and resumed with --components android,ios (per HANDOFF), skipping a web re-commit. Additionally, the running build's dispute-GROUP conversation header has NO call buttons (group voice/video calling absent on web) though 1:1 does.",
       "tag": "agent",
       "issue_id": "W5",
-      "source": "record_finding manual 2026-07-14"
-    },
-    {
-      "component": "web",
-      "issue": "Gate 6 (cross-platform interop): a 1:1 VOICE call android-buyer -> web-seller does NOT connect. Signaling works \u2014 the caller's outgoing surface mounts, the web callee receives the incoming-call popup (.cometchat-incoming-call with __button-accept/__button-decline) and answering it (the REAL accept button, verified both via the Gate 6 harness AND a manual click) \u2014 but the media session never establishes: no ongoing-call UI mounts on either side, the android caller returns to chat, and the web call is logged as a 'Missed Call'. Reproduced 2x via gate6/run.py (choreography marketplace-1to1-voice fails at step 4 'call_connected', 30s timeout on BOTH clients) + once manually. The web client repeatedly logs the CometChat console error 'uiKitSettings not available' during call init \u2014 a concrete signal the web calling UIKit settings are not fully initialized (consistent with W5: the web CometChat chat/calling UI is missing from committed source; the running docker build is from an uncommitted/lost version). CAVEAT: a headless-Chromium <-> android-emulator WebRTC media path over docker/loopback could also contribute; the uiKitSettings signal + W5 point at incomplete web integration as the primary suspect.",
-      "tag": "agent",
-      "issue_id": "W6",
       "source": "record_finding manual 2026-07-14"
     },
     {
@@ -99,11 +92,6 @@
     },
     {
       "component": "android",
-      "issue": "auto_facts.build_pass=false with retry_count=3, yet the INTEGRATION SUMMARY claims a passing build gate. The delivered diff does not compile/build as-is; the overclaim of a green build gate is itself a defect and the root cause of the failure was not surfaced.",
-      "tag": "agent"
-    },
-    {
-      "component": "android",
       "issue": "Kotlin-Views message-header call-button visibility API is misdocumented: skills/gotcha say hideVoiceCallButton/hideVideoCallButton (Compose-only); the Views CometChatMessageHeader has no such setters and requires setVoiceCallButtonVisibility(int)/setVideoCallButtonVisibility(int). Copying the documented names verbatim would not compile.",
       "tag": "skills"
     },
@@ -116,11 +104,6 @@
       "component": "android",
       "issue": "Contradictory Calls-init guidance: builder-settings claims setEnableCalling(true) auto-inits the Calls SDK while gotcha X1 requires an explicit CometChatCalls.init, leaving integrators to guess. The agent worked around it by doing both.",
       "tag": "skills"
-    },
-    {
-      "component": "android",
-      "issue": "Call-lifecycle APIs used (CometChatEvents.callEvents Flow with CometChatCallEvent.CallEnded, plus CometChat.clearActiveCall) are asserted-verified only via javap and are not corroborated by any docs-mcp result; given the failed build they are a plausible unverified surface and lack authoritative documentation.",
-      "tag": "docs-mcp"
     },
     {
       "component": "android",
@@ -182,9 +165,15 @@
       "review_question": "Optional: one real-device call to fully rule the emulator in/out; rotation counter-evidence already suggests app/kit first-mount bug"
     },
     {
-      "component": "ios",
-      "issue": "Build does not pass in the target environment (auto build_pass=false) after 7 retries, despite the INTEGRATION SUMMARY asserting a 'clean build and launch smoke'. Final integration state does not compile/link, and verification was over-reported.",
-      "tag": "agent"
+      "component": "android",
+      "issue": "docs-mcp INDEXER defect: the index strips inline code spans, so API names that appear only inside backticks are unsearchable. Measured on _docs-mcp/data/index.sqlite: the indexed body of /ui-kit/android/v6/events contains ZERO occurrences of `callEvents`, `CallEvent` or `Ended`, and the source's API table row is flattened to '| Event flows | , , , , , |'. The underlying documentation is correct and complete (events.mdx:47 tables CometChatEvents.callEvents with a full Kotlin collect sample at ~162-199; calls/v4/android/call-session.mdx:386-403 documents clearActiveCall() with Java and Kotlin samples) \u2014 it simply cannot be retrieved. This makes docs-mcp report false coverage gaps for correctly-documented APIs, and an integrating agent that trusts a docs-mcp miss will conclude an API is undocumented and hand-roll it. Discovered while auditing a finding that blamed the docs; the docs were fine, the index was not.",
+      "tag": "docs-mcp",
+      "auto_caught": false,
+      "issue_id": "DM-INDEX-CODESPAN",
+      "tier": "static",
+      "remediation_applied": false,
+      "remediation_worked": false,
+      "platform": "android"
     },
     {
       "component": "ios",
