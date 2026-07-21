@@ -17,12 +17,12 @@ every later call returns busy.
              1:1             1:1             1:1             group           group           group           
              chat            calls single    calls multiple  chat            calls single    calls multiple  
 -------------------------------------------------------------------------------------------------------------
-web-android         ✅              ✅              ✅              ✅              ❌              ❌       
-android-ios         🟡              🟡              🟡              🟡              🟡              🟡       
-ios-web             🟡              🟡              🟡              🟡              🟡              🟡       
+web-android         ✅              ✅              ✅              ✅              ✅              ❌       
+android-ios         ✅              ❌              ❌              ✅              ❌              ❌       
+ios-web             ❌              ❌              ❌              ✅              ❌              🟡       
 
 ✅ pass   ❌ fail   🟡 not verified
-4/18 passing, 6/18 run (12 never attempted)
+8/18 passing, 17/18 run (1 never attempted)
 ```
 
 ## Operator-verified (manual, at CP2)

@@ -83,22 +83,7 @@
   },
   "summary": {
     "ease_of_integration": 4,
-    "blockers": [
-      {
-        "issue": "Integration-matrix cell FAILED: web-android / call_group_single (voice_call, group) \u2014 failed at step 2 (incoming_call_visible) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
-        "tag": "interop-failure",
-        "auto_caught": true,
-        "issue_id": "MATRIX-web-android__call_group_single",
-        "tier": "runtime"
-      },
-      {
-        "issue": "Integration-matrix cell FAILED: web-android / call_group_multiple (voice_call, group) \u2014 failed at step 1 (place_voice_call) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
-        "tag": "interop-failure",
-        "auto_caught": true,
-        "issue_id": "MATRIX-web-android__call_group_multiple",
-        "tier": "runtime"
-      }
-    ],
+    "blockers": [],
     "improvement_suggestions": [],
     "auto_remediations": [
       {
@@ -173,6 +158,18 @@
       "tag": "agent",
       "retracted": true,
       "retraction_reason": "Predicated on W1: faults the agent for not verifying a collapse-to-fixed transition. There was no collapse to verify."
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: web-android / call_group_multiple (group_voice_call, group) \u2014 failed at step 7 (join_group_call) [UNSTABLE: two distinct failure modes across 3 runs; other mode: failed at step 0 (open_chat) || verb:open_chat|action 'open_chat' / assert 'chat_surface_visible']. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-web-android__call_group_multiple",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M2 mobile-group-verb",
+      "retraction_reason": "HARNESS executor gap: android join_group_call (callee, multiparty) has no ready predicate (assert None). web-android group SINGLE-party = green, so web place + android 1:1 work; only the android multiparty group-join verb is missing. Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
     }
   ],
   "retracted_suggestions": [

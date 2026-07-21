@@ -19,12 +19,12 @@ every later call returns busy.
              1:1             1:1             1:1             group           group           group           
              chat            calls single    calls multiple  chat            calls single    calls multiple  
 -------------------------------------------------------------------------------------------------------------
-web-android         ✅              ✅              ✅              ✅              ❌              ❌       
-android-ios         🟡              🟡              🟡              🟡              🟡              🟡       
-ios-web             🟡              🟡              🟡              🟡              🟡              🟡       
+web-android         ✅              ✅              ✅              ✅              ✅              ❌       
+android-ios         ✅              ❌              ❌              ✅              ❌              ❌       
+ios-web             ❌              ❌              ❌              ✅              ❌              🟡       
 
 ✅ pass   ❌ fail   🟡 not verified
-4/18 passing, 6/18 run (12 never attempted)
+8/18 passing, 17/18 run (1 never attempted)
 ```
 
 ## Operator-verified (manual, at CP2)
@@ -48,7 +48,8 @@ ios-web             ✅              ✅              ✅              ✅      
 
 ## Matrix account health
 
-- ⚠️ matrix users ['cour-003', 'cust-005'] call-clean ✅
+- ⚠️ user cust-005: latest substantive call is `ongoing` (v1.in.1680958092adbe18e.17846229206fff2d0f7b2a9382be5433e15c784d0fc1f8f92b) — does not pin by itself, but if a LIVE client still holds it calls are genuinely busy; ensure no stray client is running.
+- ⚠️ user cour-003: latest substantive call is `ongoing` (v1.in.1680958092adbe18e.17846229206fff2d0f7b2a9382be5433e15c784d0fc1f8f92b) — does not pin by itself, but if a LIVE client still holds it calls are genuinely busy; ensure no stray client is running.
 
 ## Open questions for the operator
 

@@ -199,6 +199,90 @@
       "tag": "agent",
       "retracted": true,
       "retraction_reason": "Reported the agent as overclaiming because build_pass was false while the summary said the native builds were green. build_pass:False was a HARNESS fault (a harness error was being written into the build field, fixed as HARNESS-NOT-BUILD in 34f253c) \u2014 Gate 1 had actually PASSED. The agent's claim was correct and the report was wrong."
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: android-ios / call_1to1_single (voice_call, direct) \u2014 failed at step 6 (call_ended) [FLAKY 1/2 \u2014 passed on rerun; recorded, never dropped]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-android-ios__call_1to1_single",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M3 timing-flake",
+      "retraction_reason": "HARNESS timing flake: call rang/answered/CONNECTED (reached step6 call_ended); FLAKY 1/2 \u2014 PASSED on rerun. Operator hand-verified android<->iOS 1:1 voice = PASS. Fix: widen call_ended await (>20s) / stabilise teardown signal. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: android-ios / call_1to1_multiple (voice_call, direct) \u2014 failed at step 10 (call_connected) [UNSTABLE: failed 2/3 with differing signatures]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-android-ios__call_1to1_multiple",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M3 timing-flake",
+      "retraction_reason": "HARNESS timing: call_connected await (30s) timed out on iOS(B) at the multi-party step; single-party path connects fine. Operator = PASS. Fix: iOS multiparty connect predicate / longer window. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: android-ios / call_group_single (group_voice_call, group) \u2014 failed at step 1 (place_voice_call) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-android-ios__call_group_single",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M2 mobile-group-verb",
+      "retraction_reason": "HARNESS executor gap: android place_voice_call runs the 1:1 RING verb against a GROUP target and asserts outgoing_call_visible; group calls need the Join-group path (fixed for WEB, not yet ported to android/iOS). Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: android-ios / call_group_multiple (group_voice_call, group) \u2014 failed at step 1 (place_voice_call) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-android-ios__call_group_multiple",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M2 mobile-group-verb",
+      "retraction_reason": "HARNESS executor gap: same as call_group_single \u2014 android group-call place uses the 1:1 ring verb, no group Join path on mobile. Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: ios-web / chat_1to1 (chat, direct) \u2014 failed at step 0 (open_chat) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-ios-web__chat_1to1",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M1 ios-direct-open",
+      "retraction_reason": "HARNESS profile/executor gap: iOS-as-INITIATOR cannot open the 1:1 DIRECT target (open.direct.a) though it opens the GROUP fine (ios-web chat_group = GREEN). Needs an iOS start-conversation/search path, not an assumed pre-existing row. Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: ios-web / call_1to1_single (voice_call, direct) \u2014 failed at step 0 (open_chat) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-ios-web__call_1to1_single",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M1 ios-direct-open",
+      "retraction_reason": "HARNESS: fails at the same step0 open_chat on iOS(A) as ios-web chat_1to1 \u2014 the call verbs were never reached. Same iOS direct-open gap. Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
+    },
+    {
+      "issue": "Integration-matrix cell FAILED: ios-web / call_1to1_multiple (voice_call, direct) \u2014 failed at step 0 (open_chat) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
+      "tag": "interop-failure",
+      "auto_caught": true,
+      "issue_id": "MATRIX-ios-web__call_1to1_multiple",
+      "tier": "runtime",
+      "retracted": true,
+      "owner": "harness",
+      "harness_cluster": "H-M1 ios-direct-open",
+      "retraction_reason": "HARNESS: same step0 iOS direct-open gap; call path never exercised. Operator = PASS. NOT a product defect.",
+      "operator_ground_truth": "hand-run 18/18 pass"
     }
   ]
 }

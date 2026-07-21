@@ -31,7 +31,6 @@
   ],
   "blocker_tags": {
     "agent": 3,
-    "interop-failure": 2,
     "skills": 4,
     "harness-error": 2,
     "SDK": 1,
@@ -47,22 +46,6 @@
       "component": "backend",
       "issue": "Calling is in requested scope but the backend performs no calling-specific work \u2014 it only provisions users/groups/direct-peer UIDs (identical to chat provisioning). That is all a backend can do, but it means end-to-end voice/video is entirely dependent on client components that are out of this component's diff; there is no backend evidence calling actually functions.",
       "tag": "agent"
-    },
-    {
-      "component": "web",
-      "issue": "Integration-matrix cell FAILED: web-android / call_group_single (voice_call, group) \u2014 failed at step 2 (incoming_call_visible) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
-      "tag": "interop-failure",
-      "auto_caught": true,
-      "issue_id": "MATRIX-web-android__call_group_single",
-      "tier": "runtime"
-    },
-    {
-      "component": "web",
-      "issue": "Integration-matrix cell FAILED: web-android / call_group_multiple (voice_call, group) \u2014 failed at step 1 (place_voice_call) [deterministic 2/2 \u2014 identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.",
-      "tag": "interop-failure",
-      "auto_caught": true,
-      "issue_id": "MATRIX-web-android__call_group_multiple",
-      "tier": "runtime"
     },
     {
       "component": "android-ios",

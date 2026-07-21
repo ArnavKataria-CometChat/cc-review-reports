@@ -8,7 +8,7 @@
 - Build pass: **3/3** · Trigger: **1/3** · Variant: **2/3**
 - Feature completeness (avg): **90.0%** · Ease (avg): **3.7/5**
 - Hallucinations: **0** · docs-escapes: **0** · retries: **2**
-- Findings by tag: {'agent': 3, 'interop-failure': 2, 'skills': 4, 'harness-error': 2, 'SDK': 1, 'docs-mcp': 1}
+- Findings by tag: {'agent': 3, 'skills': 4, 'harness-error': 2, 'SDK': 1, 'docs-mcp': 1}
 
 ## Per-platform
 
@@ -25,7 +25,7 @@
 > **Reading this report:** every finding below is a skill / docs / SDK gap observed in the baseline integration. Where a fix was applied to the demo app during review, that is a *verification aid only* — the underlying gap remains **open** until the skill, docs, or SDK is updated. Fix status never downgrades a finding.
 
 
-## Findings — gaps by owner (13 total)
+## Findings — gaps by owner (11 total)
 
 
 ### skills — the review's primary product  (4)
@@ -48,11 +48,6 @@
 - (backend) On FIRST group creation, syncOrderThread relies on POST /groups carrying an inline `members: { participants }` payload to seat the customer + assigned courier. If the v3 Create Group endpoint does not honor inline members (members are normally added via POST /groups/{guid}/members), the group is created empty and participants are never seated, because the reconciling addMembers() call only runs on the ERR_GUID_ALREADY_EXISTS branch. Unverified against docs; would leave freshly-created order threads with no members.
 - (backend) Calling is in requested scope but the backend performs no calling-specific work — it only provisions users/groups/direct-peer UIDs (identical to chat provisioning). That is all a backend can do, but it means end-to-end voice/video is entirely dependent on client components that are out of this component's diff; there is no backend evidence calling actually functions.
 - (android-ios) _initCalls swallows its onError and completes successfully ('non-fatal for chat'), so if the calling SDK fails to initialize the app proceeds with calling silently broken and no user-facing signal — voice/video buttons render but calls cannot connect.
-
-### interop-failure  (2)
-
-- (web) Integration-matrix cell FAILED: web-android / call_group_single (voice_call, group) — failed at step 2 (incoming_call_visible) [deterministic 2/2 — identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.
-- (web) Integration-matrix cell FAILED: web-android / call_group_multiple (voice_call, group) — failed at step 1 (place_voice_call) [deterministic 2/2 — identical failure signature]. UNDIAGNOSED: a two-client flow broke after preflight proved the environment drivable; owner not yet attributed. Blocks CP2 until it passes or is diagnosed.
 
 ### harness-error  (2)
 
