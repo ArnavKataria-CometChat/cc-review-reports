@@ -1,0 +1,327 @@
+{
+  "use_case": "logistics",
+  "batch_id": "2026-07-08-baseline",
+  "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+  "platforms": [
+    "backend",
+    "web",
+    "android-ios"
+  ],
+  "repo": "ArnavKataria-CometChat/cc-review-logistics",
+  "pr_url": null,
+  "headline": {
+    "build_pass": "3/3",
+    "trigger_accuracy": "2/3",
+    "variant_selection": "2/3",
+    "feature_completeness_avg": 90.0,
+    "ease_avg": 4.0,
+    "docs_escapes_total": 0,
+    "retries_total": 7,
+    "hallucinations_total": 0,
+    "tokens": {
+      "input": 60155,
+      "output": 193894
+    }
+  },
+  "skills_exercised": [
+    "cometchat-skills:cometchat",
+    "cometchat-skills:cometchat-flutter-v5-calls",
+    "cometchat-skills:cometchat-flutter-v5-conversations",
+    "cometchat-skills:cometchat-flutter-v5-core",
+    "cometchat-skills:cometchat-flutter-v5-events",
+    "cometchat-skills:cometchat-flutter-v5-messages",
+    "cometchat-skills:cometchat-production"
+  ],
+  "blocker_tags": {
+    "agent": 3,
+    "skills": 4,
+    "harness-error": 6,
+    "docs-mcp": 2,
+    "SDK": 1
+  },
+  "blockers": [
+    {
+      "component": "backend",
+      "issue": "The RBAC isolation rule ('drivers and clients NEVER converse directly; dispatcher is the hub') is asserted but not actually enforced. The backend only avoids putting them in a shared group \u2014 CometChat 1:1 messaging is open by default, so any provisioned driver could still DM any provisioned client. No blocking/restriction mechanism is applied to back the hub claim.",
+      "tag": "agent"
+    },
+    {
+      "component": "backend",
+      "issue": "No server-side Java example exists in the production skill for the auth-token/user/group REST flow, forcing a full manual translation to java.net.http for a legacy JSP/servlet stack that is an explicit target here.",
+      "tag": "skills"
+    },
+    {
+      "component": "web",
+      "issue": "0 screenshots captured \u2014 web flow driver lacks captureShot (update the use case's _driver.mjs) (/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/web/smoke)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "visual/no-screenshots",
+      "tier": "runtime",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "web",
+      "issue": "docs-MCP react-uikit-quickstart bundle is stale for v6: it still shows the removed CometChatConversationsWithMessages component, forcing the agent to discover the composed Conversations + MessageHeader/List/Composer shape from the skill file instead of docs.",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "issue": "No calling bundle in docs-MCP: init order (separate CometChatCalls.init after CometChatUIKit.init), incoming-call mounting, and callee-side teardown all had to come from the cometchat-react-calls skill; docs-MCP only covered the call-events symbol page.",
+      "tag": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "issue": "Calls SDK types `region` as a narrow union ('us'|'eu'|'in') while the backend supplies a runtime-validated string, forcing a type assertion at CometChatCalls.init \u2014 a minor SDK ergonomics gap that pushes an unsafe cast into integration code.",
+      "tag": "SDK"
+    },
+    {
+      "component": "android-ios",
+      "issue": "iOS screen infinite-loops / re-initializes \u2014 @StateObject wraps a shared singleton service and a .task with no id re-fires on every re-render ([ios] Maestro assertion failed [chat.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-chat-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "I1",
+      "tier": "runtime",
+      "platform": "ios",
+      "remediation_applied": true,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "The gate-3 iOS chat smoke did not fail inside the app \u2014 it failed at Maestro `launchApp` because the flow targeted a bundle id that is not installed. The rendered flow (smoke/flows/logistics/ios/chat.yaml -> executed _reports/.../ios/ios/chat.yaml line 5) uses `appId: com.northwind.northwind_dispatch`, taken from the single shared `smoke.app_package` in config/use_cases/05-logistics.yaml:47. But the built iOS app's CFBundleIdentifier is `com.northwind.northwindDispatch` (ios/Runner.xcodeproj/project.pbxproj:513 / built Runner.app Info.plist). Reproduced directly: `xcrun simctl launch <udid> com.northwind.northwind_dispatch` => FBSOpenApplicationServiceErrorDomain code=4 (the exact 1s 'Unknown error' + status=ERROR in chat.yaml.junit.xml, app bundle id absent from ios_unified_log.txt), while `...northwindDispatch` launches to a stable PID 40816 with no crash/relaunch loop. Android runs the identical stub flow and PASSES because its applicationId (android/app/build.gradle.kts:20) is snake_case `com.northwind.northwind_dispatch`. The harness even records the correct iOS id at interop.platforms.ios.app_package (05-logistics.yaml:72) but the smoke section applies one shared app_package to both platforms; Flutter's own scaffolding camelCases the iOS bundle id while keeping Android snake_case, so a single value cannot be right for both. The I1 cluster label (@StateObject/.task SwiftUI re-init loop) is a misattribution: this is a Flutter app with no SwiftUI.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "xcrun simctl install + launch on booted iPhone 17 Pro (5C6BDEC6...): launch com.northwind.northwind_dispatch => FBSOpenApplicationServiceErrorDomain code=4 (reproduces the 1s failure); launch com.northwind.northwindDispatch => PID 40816, stable after 2s (app healthy). Android chat.yaml.out.log => Passed.",
+          "result": "red"
+        },
+        "registry_draft": "",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I1.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "android-ios",
+      "issue": "iOS ghost call \u2014 the UI Kit's ongoing-call screen is not dismissed when the remote party ends a 1:1 call; the local user is stuck in a conference-of-one with the timer running until they manually hang up ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "I4",
+      "tier": "runtime",
+      "platform": "ios",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android-ios",
+      "issue": "iOS: only the first call per app launch connects \u2014 after any completed call, the next accepted call never transitions to the ongoing screen (sticks at Calling / silently drops); kit-internal state breaks and only a full app restart recovers ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "I5",
+      "tier": "runtime",
+      "platform": "ios",
+      "remediation_applied": false,
+      "remediation_worked": false,
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "The iOS Maestro smoke flows launch via `appId: {{app_package}}`, and the harness use-case config (config/use_cases/05-logistics.yaml) sets a single `app_package: com.northwind.northwind_dispatch` used verbatim for both platforms. But `flutter create` generates the iOS bundle id by stripping underscores and camelCasing, so the built/installed iOS app's CFBundleIdentifier is `com.northwind.northwindDispatch` (confirmed in build/ios/iphonesimulator/Runner.app/Info.plist and ios/Runner.xcodeproj/project.pbxproj:513; present since Phase A commit cb5a03b, i.e. pre-CometChat). Maestro's `launchApp` on iOS therefore targets an uninstalled bundle id and fails immediately \u2014 reproduced directly on the same booted sim (5C6BDEC6...): `simctl launch com.northwind.northwind_dispatch` \u2192 FBSOpenApplicationServiceErrorDomain code=4, while `simctl launch com.northwind.northwindDispatch` succeeds (PID 41359). This is why BOTH iOS flows (chat.yaml AND calling.yaml) fail identically with 'Unknown error / Failed (1s)' and the app never appears in ios_unified_log.txt, while Android (applicationId keeps the underscore, matching) passes. The I5 'second call breaks' fingerprint is a misattribution: a pre-launch, pre-call harness bundle-id mismatch, not a calling regression.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "xcrun simctl launch 5C6BDEC6-777C-4F7B-A6AC-1633AB65C9F4 com.northwind.northwind_dispatch (Maestro appId) vs com.northwind.northwindDispatch (built bundle id)",
+          "result": "red"
+        },
+        "registry_draft": "",
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I5.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "android-ios",
+      "issue": "ios smoke drove the pre-installed app \u2014 the built sim app is --no-codesign (I9: keychain -34018 breaks CometChat login), so it is NOT auto-installed and freshness is UNVERIFIED ([ios] /Users/admin/Desktop/Allapplications/logistics/mobile/build/ios/iphonesimulator/Runner.app)",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "harness/unverified-install",
+      "tier": "runtime",
+      "platform": "ios",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android-ios",
+      "issue": "Visual defect: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/calling.yaml.png: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present | judge quoted: '\"Northwind Dispatch\", \"Sign in\", \"DEMO ACCOUNTS\", \"Tap a role to sign in \u2014 shared password \\\\\"password\\\\\".\"')",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
+      "tier": "runtime",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android-ios",
+      "issue": "Visual defect: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/chat.yaml.png: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation | judge quoted: '\"Route Board\", \"rte-001\", \"2026-07-20 \u00b7 driver usr-driver\", \"Planned\", \"2 stops\"')",
+      "tag": "skills",
+      "auto_caught": true,
+      "issue_id": "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s",
+      "tier": "runtime",
+      "remediation_applied": false,
+      "remediation_worked": false
+    },
+    {
+      "component": "android-ios",
+      "issue": "1:1 direct thread/call opens the counterparty with the wrong display name: route_detail_screen.dart calls _openDirect(context, directUid!, directLabel) and constructs cc.User(uid: uid, name: name) where `name` is the UI label ('Message driver (1:1)' / 'Message dispatcher (1:1)'), not the person's real name. The MessagesScreen header and the outgoing call title therefore literally read 'Message driver (1:1)' instead of the driver/dispatcher name.",
+      "tag": "agent"
+    },
+    {
+      "component": "android-ios",
+      "issue": "Route/exception threads are entered by pushing client-fabricated stub cc.Group(guid:'route-<id>'/'exception-<id>', type:'private') and cc.User(uid:...) objects straight into CometChatMessageList / call APIs without fetching or joining the target first. Correct behavior depends entirely on the backend having provisioned membership under the mirrored id scheme; unlike ChatsInboxScreen (which has an EmptyState fallback), these screens have no user-facing failure path if the group is unprovisioned or the join fails.",
+      "tag": "agent"
+    },
+    {
+      "component": "android-ios",
+      "issue": "HARNESS BUG (not app/SDK/skills): the logistics Gate 3 mobile smoke flows are unimplemented stubs. smoke/flows/logistics/{android,ios}/{chat,calling}.yaml each contain only `- launchApp: {clearState: true}` plus a comment ('dispatcher signs in via the demo card... exercises calling') that was never turned into Maestro steps \u2014 byte-identical across both platforms and all three captured runs (baseline + flake_rerun_1 + flake_rerun_2). Because clearState wipes the app to the login screen and the flow ends in ~2s ([Passed] in calling.yaml.out.log; junit status=SUCCESS) without signing in or navigating, _capture_mobile_screenshot grabs the login screen and the screenshot judge reports 'Screen shows a login form instead of any call UI'. The fingerprint visual/screen-shows-a-login-form-instead-of-any-call-ui superficially resembles an app calling defect (A-series/X1) but the app was never exercised: the Flutter app has full calling wiring (cometchat_service.dart CometChatUIKit.init+CometChatCalls.init+loginWithAuthToken; call_screen.dart joinSession; call_manager.dart). Compare smoke/flows/delivery/android/calling.yaml, a complete live-verified flow, to see what the logistics flow was supposed to be. Two harness defects: (1) the logistics smoke flows were left as launch-only stubs; (2) the pre-integrate linter lint_calling_spec.py only checks Gate 3 flow-file EXISTENCE (check 2) and applies its [NO-STUB-COVERAGE] anti-stub guard only to Gate 6 choreographies (check 4), so the stub sailed through. RECOMMENDED HARNESS FIX: (a) author the logistics chat/calling flows with real login+navigation+call steps modeled on the delivery flow; (b) extend the [NO-STUB-COVERAGE] check (or add a flow-content lint / a classify_harness_error rule) so any smoke flow whose only command is launchApp is failed as a harness_bug rather than passed and visually judged. This keeps the failure OUT of the app/skills gap ledger \u2014 it measures nothing about the skills under review.",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "",
+      "tier": "runtime",
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "The logistics Gate 3 smoke flows (smoke/flows/logistics/{android,ios}/{chat,calling}.yaml) are unimplemented stubs: each is 10 lines containing only `- launchApp: {clearState: true}` plus a comment describing steps that were never authored (contrast the complete, live-verified smoke/flows/delivery/android/calling.yaml, ~150 lines). clearState wipes app data so the app boots to the login screen, the flow ends in ~2s ([Passed] in calling.yaml.out.log) without signing in or navigating, and _capture_mobile_screenshot (lib/smoke.py:1016) captures the login screen. The screenshot judge then correctly reports 'login form instead of any call UI' \u2014 a false app-calling-defect attribution for what is actually a harness test-scaffold gap. The harness linter lint_calling_spec.py check 2 only verifies flow-file existence, and its [NO-STUB-COVERAGE] hardening (line ~203) was applied only to Gate 6 choreographies, never to Gate 3 smoke flows, so the stub passed pre-integrate lint. The app is fully calling-wired (cometchat_service.dart:103/121/147 init+login, call_screen.dart joinSession, call_manager.dart) and was never exercised.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "python3 run_usecase.py --use-case config/use_cases/05-logistics.yaml --stage integrate --components android-ios",
+          "result": "not-run"
+        },
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_visual_screen-shows-a-login-form-instead-of-any-call-ui.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    },
+    {
+      "component": "android-ios",
+      "issue": "MISATTRIBUTION (harness bug): The gate-3 visual failure 'Screen shows a route list, not a chat conversation' on logistics android-ios is caused by an UNAUTHORED Maestro smoke flow, not by the app. chat.yaml (and calling.yaml) contain only `- launchApp: {clearState: true}` plus a prose comment describing the intended steps ('opens the Chats tab, exercises chat') \u2014 no tapOn/assertVisible/input exists (flows byte-identical across smoke, flake_rerun_1, flake_rerun_2). The flow never navigates to chat, so it screenshots whatever screen the app happens to show after launch; the same stub yields login (today's android shots), 'Route Board' (dossier + rerun_1 ios), and a blank frame (rerun_1 android calling) across runs \u2014 dispositive evidence the flow, not the app, controls the screen. The app is correctly integrated: home_shell.dart:33-39,76 places a one-tap 'Chats' tab on every role opening ChatsInboxScreen (chats_inbox_screen.dart:33) which renders the real CometChatConversations UI Kit over a properly-initialized CometChatService (cometchat_service.dart:44-60, including the X1 CometChatCalls.init split). Remediation is harness-side: author the flow's navigation (tapOn demo 'Dispatcher' card -> tapOn 'Chats' tab -> tapOn a conversation -> assertVisible message composer/bubbles) before judging; do NOT file this as an app/skills/SDK chat defect. This is the same empty-flow-read-as-app-failure class as the prior 'ghost call' misattribution called out in the debug contract.",
+      "tag": "harness-error",
+      "auto_caught": true,
+      "issue_id": "",
+      "tier": "runtime",
+      "debug_agent": {
+        "verdict": "harness_bug",
+        "confidence": "high",
+        "root_cause": "The android/ios smoke 'chat' (and 'calling') Maestro flows are unauthored stubs: the flow body is only `- launchApp: {clearState: true}` followed by a prose comment ('# dispatcher signs in via the demo card, opens the Chats tab, exercises chat.') with ZERO tap/assert/input steps (chat.yaml lines 9-10, byte-identical across smoke + flake_rerun_1 + flake_rerun_2 per diff). The flow never navigates to chat, so it screenshots an arbitrary post-launch screen and the screenshot judge correctly reports 'Route Board / not a chat'. Proof it is the flow and not the app: the same stub yields different screens across runs (login in today's android shots, 'Route Board' in the dossier + rerun_1 ios, blank in rerun_1 android calling) \u2014 impossible if the flow controlled navigation. The app is fully chat-wired: a one-tap 'Chats' NavTab on every role (lib/screens/home_shell.dart:33-39,76) opens ChatsInboxScreen which renders the real CometChatConversations UI Kit (lib/screens/chat/chats_inbox_screen.dart:33), backed by a correctly-initialized CometChatService (lib/services/cometchat_service.dart:44-60). The dispatcher's first tab is 'Route Board' (home_shell.dart:86-89), so an auto-restored session lands there; Chats is a separate tab the flow never taps.",
+        "used_reference_impl": false,
+        "debug_agent_fixed": false,
+        "verification": {
+          "reran": "artifacts from today's fresh run (pngs regenerated 17:40-17:43) already reproduce deterministically; stub flow confirmed identical across smoke + 2 reruns via diff",
+          "result": "red"
+        },
+        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_visual_screen-shows-a-route-list-not-a-chat-conversation-wit.dossier.yaml"
+      },
+      "pending_checkpoint_review": true
+    }
+  ],
+  "retracted": [],
+  "improvement_suggestions": [
+    {
+      "component": "backend",
+      "suggestion": "Add a language-agnostic 'server-side REST provisioning' section to cometchat-production (or a docs-mcp page) with a non-JS example \u2014 minimally a raw HTTP contract (headers appId/apiKey, POST /users, POST /users/{uid}/auth_tokens -> data.authToken, POST /groups with owner + members.{admins,participants}, POST /groups/{guid}/members) plus a Java/JVM snippet \u2014 so JSP/servlet and other non-JS backends aren't left to hand-translate.",
+      "motivated_by": "No server-side Java example exists in the production skill for the auth-token/user/group REST flow (skills blocker).",
+      "target": "skills"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Align the production skill's .env sample and CLI scaffold to name the server secret COMETCHAT_REST_API_KEY (fullAccess) for user/group/token operations, and clearly document the Auth-Key (authOnly) vs REST-Key (fullAccess) scope split so the var naming matches the scope table.",
+      "motivated_by": "cometchat-production .env sample names COMETCHAT_AUTH_KEY while its scope table requires a fullAccess REST API Key (staleness/conflict).",
+      "target": "skills"
+    },
+    {
+      "component": "backend",
+      "suggestion": "Document how to enforce 1:1/hub isolation in CometChat (e.g. user blocking, restrictions, or webhook-based message gating) so 'never converse directly' RBAC intents can be truly enforced rather than only implied by group membership.",
+      "motivated_by": "The hub/isolation RBAC rule is asserted but not enforced because default 1:1 messaging is open (agent blocker).",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "suggestion": "Update the docs-MCP react-uikit-quickstart bundle to v6: remove CometChatConversationsWithMessages and show the composed inbox+thread shape (CometChatConversations + CometChatMessageHeader/MessageList/MessageComposer) with the onItemClick \u2192 getConversationWith() selection pattern.",
+      "motivated_by": "docs-MCP react-uikit-quickstart bundle is stale for v6 (CometChatConversationsWithMessages removed).",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "suggestion": "Add a dedicated react-calls doc bundle to docs-MCP covering the dual-SDK init order, <CometChatIncomingCall /> app-wide mounting, and the ccCallEnded/ccCallRejected teardown + clearActiveCall/endSession/leaveSession release path, so calling integration doesn't depend solely on the skill file.",
+      "motivated_by": "No calling bundle in docs-MCP; agent relied entirely on the cometchat-react-calls skill for init order and teardown.",
+      "target": "docs-mcp"
+    },
+    {
+      "component": "web",
+      "suggestion": "In the cometchat-react-calls skill, document the region-typing union and the v4/v5 endSession-vs-leaveSession naming split, with the recommended validated-string cast and optional-chaining pattern, so integrators don't have to rediscover the workaround.",
+      "motivated_by": "Calls SDK narrow region union forces an unsafe cast and session-teardown method name differs across v4/v5.",
+      "target": "skills"
+    },
+    {
+      "component": "android-ios",
+      "suggestion": "In cometchat-flutter-v5-conversations/core, add an explicit recipe: before opening a 1:1 thread or placing a direct call, resolve the real User via CometChat.getUser(uid) (or pass the known display name) rather than constructing a stub `User(uid:, name:<UI label>)`. Include a note that the object's `name` is what the thread header and call title render.",
+      "motivated_by": "1:1 direct thread/call shows the UI label as the counterparty's display name (blocker 1).",
+      "target": "skills"
+    },
+    {
+      "component": "android-ios",
+      "suggestion": "Add a cometchat-flutter-v5-calls section for the v5 raw Calls SDK on Flutter (since the prebuilt calls UI Kit is 4.x-bound): document the joinSession + SessionStatusListeners lifecycle and the mandatory callee-side teardown (dismiss call screen on onCallEndedMessageReceived, leaveSession, CometChat.clearActiveCall) needed so a second call can connect \u2014 the exact ground the iOS ghost-call / only-first-call-connects known issues occupy.",
+      "motivated_by": "docs/skills coverage gap for the v5 raw Calls-SDK call surface and teardown on Flutter.",
+      "target": "skills"
+    },
+    {
+      "component": "android-ios",
+      "suggestion": "In cometchat-flutter-v5-messages/conversations, document the failure/empty-state pattern for entering a group/user thread whose membership may not yet be provisioned (guard + user-visible 'conversation unavailable' fallback), mirroring the inbox EmptyState, so hand-constructed group/user targets degrade gracefully.",
+      "motivated_by": "Client-fabricated group/user targets pushed into UI Kit widgets with no failure path (blocker 2).",
+      "target": "skills"
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "component": "backend",
+      "gap": "No server-side Java/JVM example for the auth-token mint + user/role/group REST provisioning flow; the production skill covers only JS/TS frameworks, so the agent had to hand-translate the REST v3 contract to java.net.http. A legacy JSP/servlet (javax.*) backend is a common enterprise target and has no worked example."
+    },
+    {
+      "component": "backend",
+      "gap": "No guidance on enforcing 1:1 conversation isolation (hub/RBAC rules) at the CometChat level \u2014 provisioning users leaves default-open 1:1 messaging, and docs-mcp/skills give no pointer to blocking/restrictions to actually enforce a 'never converse directly' rule."
+    },
+    {
+      "component": "web",
+      "gap": "No calls/react-calls bundle exists in docs-MCP \u2014 only react-uikit-quickstart. The agent had to fall back to the cometchat-react-calls SKILL file for CometChatCalls.init order and call-teardown event wiring; docs-MCP contributed only the events page."
+    },
+    {
+      "component": "web",
+      "gap": "docs-MCP gave nothing useful on the endSession vs leaveSession naming difference across Calls SDK v4/v5; the agent had to access both defensively via optional chaining."
+    },
+    {
+      "component": "android-ios",
+      "gap": "Flutter v5 raw calls: the prebuilt cometchat_calls_uikit is 4.x-bound/incompatible with the v5 Calls SDK, forcing a hand-rolled call surface (joinSession + SessionStatusListeners + CometChatOngoingCallService + clearActiveCall teardown). No docs-mcp/skill content covers building the v5 raw Calls-SDK call UI and mandatory callee-side teardown for Flutter."
+    },
+    {
+      "component": "android-ios",
+      "gap": "Backend JSP/servlet auth-token minting (POST /cometchat/token \u2192 {appId,region,uid,role,authToken} using the server-only REST API key) is documented in the README/consumed by the client but no docs-mcp query was recorded and no server code is in the mobile diff, so the server side is asserted, not evidenced."
+    }
+  ],
+  "hallucinations": [],
+  "components": {
+    "backend": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 80,
+      "ease": 4
+    },
+    "web": {
+      "build_pass": true,
+      "variant_ok": false,
+      "completeness": 100,
+      "ease": 4
+    },
+    "android-ios": {
+      "build_pass": true,
+      "variant_ok": true,
+      "completeness": 90,
+      "ease": 4
+    }
+  }
+}

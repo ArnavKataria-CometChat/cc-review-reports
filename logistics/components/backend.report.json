@@ -1,0 +1,173 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "logistics",
+    "platform": "backend",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "backend/servlet",
+    "backend": "jsp/servlet",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-21T12:32:14.846252Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat-production"
+    ],
+    "expected_variants": [],
+    "expected_backend_auth": "jsp",
+    "trigger_accuracy": true,
+    "variant_selection": true,
+    "false_triggers": [],
+    "missed_triggers": []
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": false,
+    "feature_completeness_pct": 80,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Clean, idiomatic Java confined to a new com.logistics.cometchat package + one servlet; no new Maven dependency (JDK HttpClient reused). Strong server-side hygiene: REST API key read from env only, sent only to CometChat, never logged (path ids redacted), never returned to clients; UID is derived from the authenticated session, never the request body; integration is inert (503) until COMETCHAT_* env is set so the baseline still boots; REST calls run off the request thread so a slow CometChat never blocks the dispatch API. .env is gitignored and no secret is staged. Provisioning is idempotent (handles 409/upsert). Minor: `if (res.okOrExists() && res.status == 409)` in syncRouteGroup reduces to `status == 409` (harmless dead-condition)."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 1,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 548.3,
+    "tokens": {
+      "input": 14212,
+      "output": 37561
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "REST API create group add members owner GUID",
+        "relevance": 5,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "create user REST API role metadata field",
+        "relevance": 5,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 1,
+        "latency_ms": null,
+        "returned_nothing": false
+      }
+    ],
+    "coverage_gaps": [
+      "No server-side Java/JVM example for the auth-token mint + user/role/group REST provisioning flow; the production skill covers only JS/TS frameworks, so the agent had to hand-translate the REST v3 contract to java.net.http. A legacy JSP/servlet (javax.*) backend is a common enterprise target and has no worked example.",
+      "No guidance on enforcing 1:1 conversation isolation (hub/RBAC rules) at the CometChat level \u2014 provisioning users leaves default-open 1:1 messaging, and docs-mcp/skills give no pointer to blocking/restrictions to actually enforce a 'never converse directly' rule."
+    ],
+    "staleness_conflicts": [
+      "cometchat-production skill's .env sample + CLI scaffold name the server var COMETCHAT_AUTH_KEY, but its own scope table shows user update/delete requires a fullAccess REST API Key \u2014 inconsistent var naming (the skill self-flags this as a known CLI-alignment gap). The agent correctly used COMETCHAT_REST_API_KEY server-side, but the conflict is a live source of confusion."
+    ]
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "The RBAC isolation rule ('drivers and clients NEVER converse directly; dispatcher is the hub') is asserted but not actually enforced. The backend only avoids putting them in a shared group \u2014 CometChat 1:1 messaging is open by default, so any provisioned driver could still DM any provisioned client. No blocking/restriction mechanism is applied to back the hub claim.",
+        "tag": "agent"
+      },
+      {
+        "issue": "No server-side Java example exists in the production skill for the auth-token/user/group REST flow, forcing a full manual translation to java.net.http for a legacy JSP/servlet stack that is an explicit target here.",
+        "tag": "skills"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Add a language-agnostic 'server-side REST provisioning' section to cometchat-production (or a docs-mcp page) with a non-JS example \u2014 minimally a raw HTTP contract (headers appId/apiKey, POST /users, POST /users/{uid}/auth_tokens -> data.authToken, POST /groups with owner + members.{admins,participants}, POST /groups/{guid}/members) plus a Java/JVM snippet \u2014 so JSP/servlet and other non-JS backends aren't left to hand-translate.",
+        "motivated_by": "No server-side Java example exists in the production skill for the auth-token/user/group REST flow (skills blocker).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Align the production skill's .env sample and CLI scaffold to name the server secret COMETCHAT_REST_API_KEY (fullAccess) for user/group/token operations, and clearly document the Auth-Key (authOnly) vs REST-Key (fullAccess) scope split so the var naming matches the scope table.",
+        "motivated_by": "cometchat-production .env sample names COMETCHAT_AUTH_KEY while its scope table requires a fullAccess REST API Key (staleness/conflict).",
+        "target": "skills"
+      },
+      {
+        "suggestion": "Document how to enforce 1:1/hub isolation in CometChat (e.g. user blocking, restrictions, or webhook-based message gating) so 'never converse directly' RBAC intents can be truly enforced rather than only implied by group membership.",
+        "motivated_by": "The hub/isolation RBAC rule is asserted but not enforced because default 1:1 messaging is open (agent blocker).",
+        "target": "docs-mcp"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n**Component:** `backend/` \u2014 legacy Java JSP/servlet (Tomcat 9, `javax.*`, Maven WAR). This is the **trusted server half** of the CometChat integration; the chat/call UI lives in the sibling web/mobile components (out of scope here).\n\n**What I built (new package `com.logistics.cometchat` + one servlet):**\n- `CometChatConfig` \u2014 reads `COMETCHAT_APP_ID/REGION/REST_API_KEY/AUTH_KEY` from env only; integration is inert (`isConfigured()==false`) when unset so the baseline still boots.\n- `CometChatClient` \u2014 REST v3 wrapper on the JDK `HttpClient` (no new Maven dep \u2192 docker build unaffected). Capped exponential backoff on 429/5xx; the REST API key is sent only to CometChat and never logged (path ids redacted).\n- `CometChatService` \u2014 the RBAC\u2192CometChat mapping: user provisioning (role stamped as top-level `role` **and** `metadata.role`), the 4 roles created on boot, route groups, exception groups, token minting. All CometChat calls run off the request thread (best-effort) so a slow/down CometChat never blocks the dispatch API.\n- `CometChatServlet` \u2014 `GET /cometchat/config` (App ID + Region + UID + role, **no secret**) and `POST /cometchat/token` (UID derived from the **authenticated session, never the body** \u2192 `{authToken,\u2026}`). Wired into `AppContext`, `StartupListener` (seed provisioning), `RoutesServlet` (route group on `POST /routes`), `ShipmentsServlet` (exception group open/close on status change).\n\n**Skill variant(s) relied on:** `cometchat-production` (server-side token auth + user CRUD \u2014 the authoritative source for the `POST /v3/users/{uid}/auth_tokens` flow and the Auth-Key-vs-REST-Key scope split) plus docs-mcp REST pages `/rest-api/users`, `/rest-api/users/create` (OpenAPI), `/rest-api/groups`, `/rest-api/group-members`, `/rest-api/roles/create`. No client-family skill applied (backend has no UI kit).\n\n**Where docs/skills were wrong/missing/contradictory:** The production skill's `.env` sample and CLI scaffold name the server var `COMETCHAT_AUTH_KEY`, but its own scope table shows update/delete user needs a `fullAccess` **REST API Key** \u2014 the skill flags this as a known CLI-alignment gap. I followed the corrected guidance: `COMETCHAT_REST_API_KEY` is the server secret; `COMETCHAT_AUTH_KEY` is kept only as an optional documented seam. The skill covers only JS/TS frameworks \u2014 no Java example \u2014 so I translated the REST contract to `java.net.http`.\n\n**Candidate hallucinations / unsure API surface:** None invented \u2014 every endpoint/field (`/users`, `/users/{uid}/auth_tokens` \u2192 `data.authToken`, `/roles`, `/groups` with `owner`+`members.{admins,participants}`, `/groups/{guid}/members`) was confirmed against docs-mcp OpenAPI/reference pages before use. One documented caveat: the top-level user `role` \"must be created beforehand,\" so I create the 4 roles on boot before stamping users; I also mirror role into `metadata.role` as a scoping-safe fallback.\n\n**Left skills/docs to web-search or guess:** No. All lookups stayed in docs-mcp + skills. No web search, no docs-escape.\n\n**Scope completed vs. incomplete:**\n- \u2705 Backend auth-token flow + user/role mapping + group provisioning + secrets-in-env \u2014 done and verified.\n- **1:1 (direct):** backend-complete \u2014 it provisions both users; a dispatcher\u2194driver / dispatcher\u2194client 1:1 is a user-to-user CometChat conversation (no server object), and drivers\u2194clients are never provisioned into a shared conversation (hub rule enforced). **Group (route + exception):** built server-side as private CometChat groups.\n- **Chats tab on the dashboard / voice+video call buttons:** N/A for this component \u2014 those are client-UI concerns in the web/android/ios components. This backend has only a JSP API-reference landing page (I added the two endpoints to it and the README).\n\n**call-teardown:** **n/a** \u2014 this is the backend service; it renders no call UI and holds no client-side call session, so there is no callee-side call screen to dismiss or local session to release here. The callee-side teardown frame (dismiss on `onCallEndedMessageReceived`/session-ended + `clearActiveCall`) must be implemented in the web/android/ios client components. The backend's calling contribution is user provisioning + auth tokens (which cover both chat and voice/video) + the group objects that group calls run over.\n\n**Verification:** `./verify.sh` (docker build) passes \u2014 31 sources compiled, image built. Runtime smoke test confirmed: baseline boots (33 users seeded); `/cometchat/config` \u2192 200 with App ID/Region/UID/role and **no secret**; unauthenticated \u2192 401; `/cometchat/token` executes the full REST flow against the real `demo123.api-us.cometchat.io` host (fake key correctly rejected 401\u2192mapped 502); the REST key string appears **0 times** in logs; `.env` is gitignored and no secret is staged/committed.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ],
+    "integration_final_summary": "## INTEGRATION SUMMARY\n\n**Component:** `backend/` \u2014 legacy Java JSP/servlet (Tomcat 9, `javax.*`, Maven WAR). This is the **trusted server half** of the CometChat integration; the chat/call UI lives in the sibling web/mobile components (out of scope here).\n\n**What I built (new package `com.logistics.cometchat` + one servlet):**\n- `CometChatConfig` \u2014 reads `COMETCHAT_APP_ID/REGION/REST_API_KEY/AUTH_KEY` from env only; integration is inert (`isConfigured()==false`) when unset so the baseline still boots.\n- `CometChatClient` \u2014 REST v3 wrapper on the JDK `HttpClient` (no new Maven dep \u2192 docker build unaffected). Capped exponential backoff on 429/5xx; the REST API key is sent only to CometChat and never logged (path ids redacted).\n- `CometChatService` \u2014 the RBAC\u2192CometChat mapping: user provisioning (role stamped as top-level `role` **and** `metadata.role`), the 4 roles created on boot, route groups, exception groups, token minting. All CometChat calls run off the request thread (best-effort) so a slow/down CometChat never blocks the dispatch API.\n- `CometChatServlet` \u2014 `GET /cometchat/config` (App ID + Region + UID + role, **no secret**) and `POST /cometchat/token` (UID derived from the **authenticated session, never the body** \u2192 `{authToken,\u2026}`). Wired into `AppContext`, `StartupListener` (seed provisioning), `RoutesServlet` (route group on `POST /routes`), `ShipmentsServlet` (exception group open/close on status change).\n\n**Skill variant(s) relied on:** `cometchat-production` (server-side token auth + user CRUD \u2014 the authoritative source for the `POST /v3/users/{uid}/auth_tokens` flow and the Auth-Key-vs-REST-Key scope split) plus docs-mcp REST pages `/rest-api/users`, `/rest-api/users/create` (OpenAPI), `/rest-api/groups`, `/rest-api/group-members`, `/rest-api/roles/create`. No client-family skill applied (backend has no UI kit).\n\n**Where docs/skills were wrong/missing/contradictory:** The production skill's `.env` sample and CLI scaffold name the server var `COMETCHAT_AUTH_KEY`, but its own scope table shows update/delete user needs a `fullAccess` **REST API Key** \u2014 the skill flags this as a known CLI-alignment gap. I followed the corrected guidance: `COMETCHAT_REST_API_KEY` is the server secret; `COMETCHAT_AUTH_KEY` is kept only as an optional documented seam. The skill covers only JS/TS frameworks \u2014 no Java example \u2014 so I translated the REST contract to `java.net.http`.\n\n**Candidate hallucinations / unsure API surface:** None invented \u2014 every endpoint/field (`/users`, `/users/{uid}/auth_tokens` \u2192 `data.authToken`, `/roles`, `/groups` with `owner`+`members.{admins,participants}`, `/groups/{guid}/members`) was confirmed against docs-mcp OpenAPI/reference pages before use. One documented caveat: the top-level user `role` \"must be created beforehand,\" so I create the 4 roles on boot before stamping users; I also mirror role into `metadata.role` as a scoping-safe fallback.\n\n**Left skills/docs to web-search or guess:** No. All lookups stayed in docs-mcp + skills. No web search, no docs-escape.\n\n**Scope completed vs. incomplete:**\n- \u2705 Backend auth-token flow + user/role mapping + group provisioning + secrets-in-env \u2014 done and verified.\n- **1:1 (direct):** backend-complete \u2014 it provisions both users; a dispatcher\u2194driver / dispatcher\u2194client 1:1 is a user-to-user CometChat conversation (no server object), and drivers\u2194clients are never provisioned into a shared conversation (hub rule enforced). **Group (route + exception):** built server-side as private CometChat groups.\n- **Chats tab on the dashboard / voice+video call buttons:** N/A for this component \u2014 those are client-UI concerns in the web/android/ios components. This backend has only a JSP API-reference landing page (I added the two endpoints to it and the README).\n\n**call-teardown:** **n/a** \u2014 this is the backend service; it renders no call UI and holds no client-side call session, so there is no callee-side call screen to dismiss or local session to release here. The callee-side teardown frame (dismiss on `onCallEndedMessageReceived`/session-ended + `clearActiveCall`) must be implemented in the web/android/ios client components. The backend's calling contribution is user provisioning + auth tokens (which cover both chat and voice/video) + the group objects that group calls run over.\n\n**Verification:** `./verify.sh` (docker build) passes \u2014 31 sources compiled, image built. Runtime smoke test confirmed: baseline boots (33 users seeded); `/cometchat/config` \u2192 200 with App ID/Region/UID/role and **no secret**; unauthenticated \u2192 401; `/cometchat/token` executes the full REST flow against the real `demo123.api-us.cometchat.io` host (fake key correctly rejected 401\u2192mapped 502); the REST key string appears **0 times** in logs; `.env` is gitignored and no secret is staged/committed."
+  },
+  "gate_execution": {
+    "specs_executed": 0,
+    "screens_judged": 0,
+    "runtime_success": false
+  }
+}

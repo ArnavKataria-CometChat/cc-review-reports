@@ -1,0 +1,166 @@
+{
+  "run": {
+    "batch_id": "2026-07-08-baseline",
+    "use_case_id": "logistics",
+    "platform": "web",
+    "covers": null,
+    "skills_ref": "ac87450a6be3c0f3300ac953942b5c8dd1b70c33",
+    "docs_mcp_ref": "main",
+    "frontend": "web/astro",
+    "backend": "jsp/servlet",
+    "branch": "feature/cometchat-integration",
+    "pr_url": null,
+    "timestamp": "2026-07-21T12:34:08.094770Z"
+  },
+  "skill_activation": {
+    "skills_loaded": [
+      "cometchat-skills:cometchat"
+    ],
+    "expected_variants": [
+      "astro"
+    ],
+    "expected_backend_auth": "jsp",
+    "trigger_accuracy": false,
+    "variant_selection": false,
+    "false_triggers": [],
+    "missed_triggers": [
+      "astro"
+    ]
+  },
+  "integration_outcome": {
+    "build_pass": true,
+    "runtime_success": true,
+    "feature_completeness_pct": 100,
+    "scope_checklist": {
+      "auth_token_flow": true,
+      "rbac_user_mapping": true,
+      "push": null,
+      "theming": null,
+      "chat": true,
+      "calling": true
+    },
+    "diff_quality": {
+      "minimal_idiomatic": true,
+      "unrelated_refactors": false,
+      "secrets_committed": false,
+      "keys_in_env": true,
+      "notes": "Clean, idiomatic Astro-islands integration. Chat UI is browser-only (client:only=\"react\") which is correct because the UI Kit touches window/document at import. Auth is a proper token flow: no CometChat credentials in the client bundle; browser fetches same-origin /api/cometchat/session which proxies to backend /cometchat/token using the httpOnly session cookie, then loginWithAuthToken. REST API key stays in backend env (COMETCHAT_REST_API_KEY). Both 1:1 (dispatcher-hub) and group (route + exception) conversations built with chat + voice/video. RBAC is server-derived (membership provisioned server-side, not client-filtered). StrictMode double-mount guarded via module-level init/login flags. Call buttons correctly left to CometChatMessageHeader auto-render (no double-render). Only smell: `region as 'us'|'eu'|'in'` cast, forced by narrow SDK typing; and defensive optional-chaining on endSession/leaveSession to bridge v4/v5 naming."
+    }
+  },
+  "agent_effort": {
+    "first_pass_success": false,
+    "retry_count": 3,
+    "hallucination_count": 0,
+    "hallucinations": [],
+    "docs_escapes": 0,
+    "docs_escape_queries": [],
+    "wall_clock_seconds": 798.4,
+    "tokens": {
+      "input": 15380,
+      "output": 53506
+    }
+  },
+  "docs_mcp": {
+    "queries": [
+      {
+        "query": "",
+        "relevance": 3,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 3,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "React UI Kit call events ccCallEnded CometChatCallEvents subscribe end session clear active call",
+        "relevance": 5,
+        "latency_ms": null,
+        "returned_nothing": false
+      },
+      {
+        "query": "",
+        "relevance": 3,
+        "latency_ms": null,
+        "returned_nothing": false
+      }
+    ],
+    "coverage_gaps": [
+      "No calls/react-calls bundle exists in docs-MCP \u2014 only react-uikit-quickstart. The agent had to fall back to the cometchat-react-calls SKILL file for CometChatCalls.init order and call-teardown event wiring; docs-MCP contributed only the events page.",
+      "docs-MCP gave nothing useful on the endSession vs leaveSession naming difference across Calls SDK v4/v5; the agent had to access both defensively via optional chaining."
+    ],
+    "staleness_conflicts": [
+      "The react-uikit-quickstart bundle still documents `CometChatConversationsWithMessages`, which no longer exists in UI Kit v6. The agent detected this (via the react-calls skill note) and hand-composed CometChatConversations + CometChatMessageHeader/List/Composer instead \u2014 but the stale doc would mislead an agent that trusted it."
+    ]
+  },
+  "summary": {
+    "ease_of_integration": 4,
+    "blockers": [
+      {
+        "issue": "0 screenshots captured \u2014 web flow driver lacks captureShot (update the use case's _driver.mjs) (/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/web/smoke)",
+        "tag": "harness-error",
+        "auto_caught": true,
+        "issue_id": "visual/no-screenshots",
+        "tier": "runtime",
+        "remediation_applied": false,
+        "remediation_worked": false
+      },
+      {
+        "issue": "docs-MCP react-uikit-quickstart bundle is stale for v6: it still shows the removed CometChatConversationsWithMessages component, forcing the agent to discover the composed Conversations + MessageHeader/List/Composer shape from the skill file instead of docs.",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "No calling bundle in docs-MCP: init order (separate CometChatCalls.init after CometChatUIKit.init), incoming-call mounting, and callee-side teardown all had to come from the cometchat-react-calls skill; docs-MCP only covered the call-events symbol page.",
+        "tag": "docs-mcp"
+      },
+      {
+        "issue": "Calls SDK types `region` as a narrow union ('us'|'eu'|'in') while the backend supplies a runtime-validated string, forcing a type assertion at CometChatCalls.init \u2014 a minor SDK ergonomics gap that pushes an unsafe cast into integration code.",
+        "tag": "SDK"
+      }
+    ],
+    "improvement_suggestions": [
+      {
+        "suggestion": "Update the docs-MCP react-uikit-quickstart bundle to v6: remove CometChatConversationsWithMessages and show the composed inbox+thread shape (CometChatConversations + CometChatMessageHeader/MessageList/MessageComposer) with the onItemClick \u2192 getConversationWith() selection pattern.",
+        "motivated_by": "docs-MCP react-uikit-quickstart bundle is stale for v6 (CometChatConversationsWithMessages removed).",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "Add a dedicated react-calls doc bundle to docs-MCP covering the dual-SDK init order, <CometChatIncomingCall /> app-wide mounting, and the ccCallEnded/ccCallRejected teardown + clearActiveCall/endSession/leaveSession release path, so calling integration doesn't depend solely on the skill file.",
+        "motivated_by": "No calling bundle in docs-MCP; agent relied entirely on the cometchat-react-calls skill for init order and teardown.",
+        "target": "docs-mcp"
+      },
+      {
+        "suggestion": "In the cometchat-react-calls skill, document the region-typing union and the v4/v5 endSession-vs-leaveSession naming split, with the recommended validated-string cast and optional-chaining pattern, so integrators don't have to rediscover the workaround.",
+        "motivated_by": "Calls SDK narrow region union forces an unsafe cast and session-teardown method name differs across v4/v5.",
+        "target": "skills"
+      }
+    ],
+    "auto_remediations": []
+  },
+  "_meta": {
+    "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Skill variants relied on:** `cometchat-astro-patterns` (React islands, `client:only`, CSS-inside-island, `PUBLIC_` env), `cometchat-react-calls` (dual-SDK init order, additive ringing, don't-double-call-buttons, `CometChatCalls.init`), plus `cometchat` dispatcher and the react-uikit-quickstart bundle. Docs-MCP used for the React v6 events page (call-event symbols). Ground truth: `@cometchat/chat-uikit-react@^6` + `@cometchat/chat-sdk-javascript@^4` + `@cometchat/calls-sdk-javascript@^5`.\n- **Where skills/docs were wrong/outdated:** The `react-uikit-quickstart` bundle still shows `CometChatConversationsWithMessages`, which **no longer exists in v6** (the react-calls skill explicitly notes it was removed). I used the composed `Conversations` + `MessageHeader/List/Composer` shape instead. No `react-calls` bundle exists in docs-MCP (only `react-uikit-quickstart`); I used the `cometchat-react-calls` SKILL file for calls.\n- **Candidate hallucinations (verified before use):** `CometChatCallEvents.ccCallEnded/ccCallRejected` \u2014 verified against the React v6 events doc page. `CometChat.clearActiveCall()`, `CometChatCalls.init({appId,region})`, `loginWithAuthToken` \u2014 all resolved cleanly at type-check + build, so the symbols exist in the installed packages. `CometChatCalls.endSession/leaveSession` accessed defensively (optional-chained) since the name differs across v4/v5.\n- **Docs-escapes (web-search/guess):** None. I stayed within docs-MCP + the skill files. The only cast is `region as 'us'|'eu'|'in'` because the Calls SDK types region as a narrow union while the backend supplies a validated string.\n- **Scope completed:** BOTH 1:1 (direct user-to-user) AND group conversations built, each with chat + voice **and** video. **Chats tab is on the dashboard** primary nav (nav item label: **\"Chats\"**, `/chats`) for every role. RBAC respected (CometChat user carries role; membership is server-derived; dispatcher-hub enforced). Nothing left incomplete for the web scope. (Backend token-mint/user-provisioning already existed in `../backend` and was consumed read-only, not modified, per component-scope rules.)\n- **call-teardown:** I **created** an explicit callee-side teardown frame \u2014 `src/components/cometchat/CallTeardown.tsx`. It subscribes to `CometChatCallEvents.ccCallEnded` and `ccCallRejected` (kit events) plus `CometChat.addCallListener`'s `onIncomingCallCancelled`/`onOutgoingCallRejected` (Chat-SDK safety net), and on any of them runs `releaseActiveCall()`: `CometChat.clearActiveCall()` (dismisses the ongoing/incoming view on the **callee/non-initiator** side) + `CometChatCalls.leaveSession()`/`endSession()` (releases the local WebRTC session so a subsequent call connects rather than returning \"busy\"). `<CometChatIncomingCall />` is mounted here app-wide so it survives navigation. Verified structurally: the listeners are registered at island mount (above the route/thread), fire regardless of which conversation is open, and are cleaned up on unmount (`unsubscribe()` / `removeCallListener`). Runtime two-user call verification requires a live browser + two sessions, which isn't available in this build-only gate; the teardown path is wired to the exact end/reject/cancel events for that scenario.",
+    "review_status": "reviewed",
+    "known_issues_registry_ref": "ki-2026-07-13.3",
+    "auto_healed_count": 0,
+    "healed_findings": [],
+    "review_fields": [
+      "skill_activation.false_triggers",
+      "integration_outcome.feature_completeness_pct",
+      "integration_outcome.scope_checklist.*",
+      "integration_outcome.diff_quality.*",
+      "agent_effort.hallucination_count/hallucinations",
+      "docs_mcp.queries[].relevance",
+      "docs_mcp.coverage_gaps",
+      "docs_mcp.staleness_conflicts",
+      "summary.*"
+    ],
+    "integration_final_summary": "## INTEGRATION SUMMARY\n\n- **Skill variants relied on:** `cometchat-astro-patterns` (React islands, `client:only`, CSS-inside-island, `PUBLIC_` env), `cometchat-react-calls` (dual-SDK init order, additive ringing, don't-double-call-buttons, `CometChatCalls.init`), plus `cometchat` dispatcher and the react-uikit-quickstart bundle. Docs-MCP used for the React v6 events page (call-event symbols). Ground truth: `@cometchat/chat-uikit-react@^6` + `@cometchat/chat-sdk-javascript@^4` + `@cometchat/calls-sdk-javascript@^5`.\n- **Where skills/docs were wrong/outdated:** The `react-uikit-quickstart` bundle still shows `CometChatConversationsWithMessages`, which **no longer exists in v6** (the react-calls skill explicitly notes it was removed). I used the composed `Conversations` + `MessageHeader/List/Composer` shape instead. No `react-calls` bundle exists in docs-MCP (only `react-uikit-quickstart`); I used the `cometchat-react-calls` SKILL file for calls.\n- **Candidate hallucinations (verified before use):** `CometChatCallEvents.ccCallEnded/ccCallRejected` \u2014 verified against the React v6 events doc page. `CometChat.clearActiveCall()`, `CometChatCalls.init({appId,region})`, `loginWithAuthToken` \u2014 all resolved cleanly at type-check + build, so the symbols exist in the installed packages. `CometChatCalls.endSession/leaveSession` accessed defensively (optional-chained) since the name differs across v4/v5.\n- **Docs-escapes (web-search/guess):** None. I stayed within docs-MCP + the skill files. The only cast is `region as 'us'|'eu'|'in'` because the Calls SDK types region as a narrow union while the backend supplies a validated string.\n- **Scope completed:** BOTH 1:1 (direct user-to-user) AND group conversations built, each with chat + voice **and** video. **Chats tab is on the dashboard** primary nav (nav item label: **\"Chats\"**, `/chats`) for every role. RBAC respected (CometChat user carries role; membership is server-derived; dispatcher-hub enforced). Nothing left incomplete for the web scope. (Backend token-mint/user-provisioning already existed in `../backend` and was consumed read-only, not modified, per component-scope rules.)\n- **call-teardown:** I **created** an explicit callee-side teardown frame \u2014 `src/components/cometchat/CallTeardown.tsx`. It subscribes to `CometChatCallEvents.ccCallEnded` and `ccCallRejected` (kit events) plus `CometChat.addCallListener`'s `onIncomingCallCancelled`/`onOutgoingCallRejected` (Chat-SDK safety net), and on any of them runs `releaseActiveCall()`: `CometChat.clearActiveCall()` (dismisses the ongoing/incoming view on the **callee/non-initiator** side) + `CometChatCalls.leaveSession()`/`endSession()` (releases the local WebRTC session so a subsequent call connects rather than returning \"busy\"). `<CometChatIncomingCall />` is mounted here app-wide so it survives navigation. Verified structurally: the listeners are registered at island mount (above the route/thread), fire regardless of which conversation is open, and are cleaned up on unmount (`unsubscribe()` / `removeCallListener`). Runtime two-user call verification requires a live browser + two sessions, which isn't available in this build-only gate; the teardown path is wired to the exact end/reject/cancel events for that scenario."
+  },
+  "gate_execution": {
+    "specs_executed": 10,
+    "screens_judged": 0,
+    "runtime_success": true
+  }
+}
