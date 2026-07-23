@@ -98,7 +98,10 @@
           "registry_draft": "",
           "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I1.dossier.yaml"
         },
-        "pending_checkpoint_review": true
+        "pending_checkpoint_review": true,
+        "retracted": true,
+        "retraction_reason": "MISDIAGNOSIS \u2014 the stated mechanism cannot apply to this app. The finding blames SwiftUI `@StateObject` wrapping a singleton and a `.task` without an id re-firing, but logistics mobile is a FLUTTER app (Dart); it contains no SwiftUI, no @StateObject and no .task. The observed iOS symptom was traced to a stale simulator build: `flutter build ios` silently reinstalled the PREVIOUS Runner.app when ios/Flutter/ephemeral was read-only, so the app ran with the wrong API_BASE_URL and could not reach the backend. Retracted as an app/skills defect; the real issue is the build/harness trap already recorded separately.",
+        "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
       },
       {
         "issue": "iOS ghost call \u2014 the UI Kit's ongoing-call screen is not dismissed when the remote party ends a 1:1 call; the local user is stuck in a conference-of-one with the timer running until they manually hang up ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
@@ -132,7 +135,10 @@
           "registry_draft": "",
           "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I5.dossier.yaml"
         },
-        "pending_checkpoint_review": true
+        "pending_checkpoint_review": true,
+        "retracted": true,
+        "retraction_reason": "CONTRADICTED BY LATER EVIDENCE \u2014 'only the first call per app launch connects; only a full app restart recovers' does not reproduce. At CP2 the operator ran the full manual two-device matrix and 1:1 calls MULTIPLE (a second call placed after the first ends) passed on all three pairs (web-android, android-ios, ios-web), 18/18. A live android<->iOS second call was also observed connecting in-session (accepted -> onParticipantJoined -> onSessionJoined) with no app restart. Retracted on own-evidence contradiction.",
+        "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
       },
       {
         "issue": "ios smoke drove the pre-installed app \u2014 the built sim app is --no-codesign (I9: keychain -34018 breaks CometChat login), so it is NOT auto-installed and freshness is UNVERIFIED ([ios] /Users/admin/Desktop/Allapplications/logistics/mobile/build/ios/iphonesimulator/Runner.app)",
@@ -151,7 +157,10 @@
         "issue_id": "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
         "tier": "runtime",
         "remediation_applied": false,
-        "remediation_worked": false
+        "remediation_worked": false,
+        "retracted": true,
+        "retraction_reason": "MISATTRIBUTION \u2014 caused by an UNAUTHORED smoke flow, not the app. As established by the harness-error blockers in this same report, smoke/flows/logistics/{android,ios}/calling.yaml contains only `launchApp: {clearState: true}`; clearState wipes the app to the login screen and the flow ends without signing in or navigating, so the screenshot judge necessarily saw a login screen. The flow measured nothing about the skills under review. Retracted as a skills finding; the harness gap remains recorded.",
+        "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
       },
       {
         "issue": "Visual defect: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/chat.yaml.png: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation | judge quoted: '\"Route Board\", \"rte-001\", \"2026-07-20 \u00b7 driver usr-driver\", \"Planned\", \"2 stops\"')",
@@ -160,7 +169,10 @@
         "issue_id": "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s",
         "tier": "runtime",
         "remediation_applied": false,
-        "remediation_worked": false
+        "remediation_worked": false,
+        "retracted": true,
+        "retraction_reason": "MISATTRIBUTION \u2014 same unauthored-stub cause as above (chat.yaml is `launchApp` only). The same stub yielded login, 'Route Board' and a blank frame across runs, which is dispositive that the FLOW, not the app, controlled the screen. The app wires a Chats tab on every role opening the real CometChatConversations UI Kit. Retracted as a skills finding; the harness gap remains recorded.",
+        "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
       },
       {
         "issue": "1:1 direct thread/call opens the counterparty with the wrong display name: route_detail_screen.dart calls _openDirect(context, directUid!, directLabel) and constructs cc.User(uid: uid, name: name) where `name` is the UI label ('Message driver (1:1)' / 'Message dispatcher (1:1)'), not the person's real name. The MessagesScreen header and the outgoing call title therefore literally read 'Message driver (1:1)' instead of the driver/dispatcher name.",
@@ -254,7 +266,13 @@
       ],
       "inconclusive_rate": 0.0,
       "truncation_note": "1 clusters undiagnosed (spawn cap 4) \u2014 findings recorded, diagnosis deferred: visual/screen-shows-a-login-role-selection-form-instead-of-any-call"
-    }
+    },
+    "retracted_blockers": [
+      "I1",
+      "I5",
+      "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
+      "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s"
+    ]
   },
   "_meta": {
     "agent_final_summary": "## INTEGRATION SUMMARY\n\n- **Fixed:** None. The named [I1] defect does not exist in this codebase. This app is **Flutter** (not native SwiftUI), so there is no `@StateObject`/`.task` construct. The two things I1 targets are already correct: singleton ownership is via `ChangeNotifierProvider.value` in `mobile/lib/main.dart:23-26` (no screen owns/re-creates the service), and the side-effecting init is idempotent/guarded in `mobile/lib/services/cometchat_service.dart:45,55` (`connect()` guarded by `_connected || _connecting` and `_inited`), driven from `Session` lifecycle \u2014 never from `build()`. I did not make an edit because any change would be fabricated and would violate the \"smallest change / fix only the named issue / don't touch working code\" rules.\n- **Skills/docs used:** None invoked \u2014 the defect is a stack mismatch, not an API question, so `docs-mcp`/skills had nothing to correct. **Skill-gap / detector signal:** the I1 catalog entry is authored for the native-iOS (SwiftUI) family and was fired against a **Flutter** iOS build, where the `@StateObject`/`.task` construct cannot exist. The catalog's I1 remediation has no Flutter mapping, and the Flutter code already embodies the \"fixed\" pattern the entry prescribes.\n- **API/class/prop I was unsure existed:** None \u2014 I asserted no new APIs.\n- **Web-search or guess fallback:** None.\n- **Still open:** The `chat.yaml` iOS Maestro smoke failure is **not** attributable to an I1-style re-init loop in this code (verified by tracing every `connect()`/`attach()` caller, every Provider registration, and every chat/call screen's lifecycle). The most likely cause of the smoke failing in ~1s is environmental \u2014 CometChat not provisioned in the headless test env, so `connect()` returns `false` and `ChatsInboxScreen` renders the graceful `EmptyState` (\"Chat is unavailable\") instead of `CometChatConversations`, which the flow can't find. That is a credentials/`.env` provisioning concern (rule 5 keeps creds in gitignored `.env`), not the named code defect, and cannot be confirmed headlessly here.",

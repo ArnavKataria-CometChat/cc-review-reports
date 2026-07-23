@@ -98,7 +98,10 @@
         "registry_draft": "",
         "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I1.dossier.yaml"
       },
-      "pending_checkpoint_review": true
+      "pending_checkpoint_review": true,
+      "retracted": true,
+      "retraction_reason": "MISDIAGNOSIS \u2014 the stated mechanism cannot apply to this app. The finding blames SwiftUI `@StateObject` wrapping a singleton and a `.task` without an id re-firing, but logistics mobile is a FLUTTER app (Dart); it contains no SwiftUI, no @StateObject and no .task. The observed iOS symptom was traced to a stale simulator build: `flutter build ios` silently reinstalled the PREVIOUS Runner.app when ios/Flutter/ephemeral was read-only, so the app ran with the wrong API_BASE_URL and could not reach the backend. Retracted as an app/skills defect; the real issue is the build/harness trap already recorded separately.",
+      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
     },
     {
       "component": "android-ios",
@@ -134,7 +137,10 @@
         "registry_draft": "",
         "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I5.dossier.yaml"
       },
-      "pending_checkpoint_review": true
+      "pending_checkpoint_review": true,
+      "retracted": true,
+      "retraction_reason": "CONTRADICTED BY LATER EVIDENCE \u2014 'only the first call per app launch connects; only a full app restart recovers' does not reproduce. At CP2 the operator ran the full manual two-device matrix and 1:1 calls MULTIPLE (a second call placed after the first ends) passed on all three pairs (web-android, android-ios, ios-web), 18/18. A live android<->iOS second call was also observed connecting in-session (accepted -> onParticipantJoined -> onSessionJoined) with no app restart. Retracted on own-evidence contradiction.",
+      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
     },
     {
       "component": "android-ios",
@@ -155,7 +161,10 @@
       "issue_id": "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
       "tier": "runtime",
       "remediation_applied": false,
-      "remediation_worked": false
+      "remediation_worked": false,
+      "retracted": true,
+      "retraction_reason": "MISATTRIBUTION \u2014 caused by an UNAUTHORED smoke flow, not the app. As established by the harness-error blockers in this same report, smoke/flows/logistics/{android,ios}/calling.yaml contains only `launchApp: {clearState: true}`; clearState wipes the app to the login screen and the flow ends without signing in or navigating, so the screenshot judge necessarily saw a login screen. The flow measured nothing about the skills under review. Retracted as a skills finding; the harness gap remains recorded.",
+      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
     },
     {
       "component": "android-ios",
@@ -165,7 +174,10 @@
       "issue_id": "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s",
       "tier": "runtime",
       "remediation_applied": false,
-      "remediation_worked": false
+      "remediation_worked": false,
+      "retracted": true,
+      "retraction_reason": "MISATTRIBUTION \u2014 same unauthored-stub cause as above (chat.yaml is `launchApp` only). The same stub yielded login, 'Route Board' and a blank frame across runs, which is dispositive that the FLOW, not the app, controlled the screen. The app wires a Chats tab on every role opening the real CometChatConversations UI Kit. Retracted as a skills finding; the harness gap remains recorded.",
+      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
     },
     {
       "component": "android-ios",
