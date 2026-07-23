@@ -34,8 +34,8 @@
   ],
   "blocker_tags": {
     "agent": 3,
-    "skills": 4,
-    "harness-error": 6,
+    "skills": 2,
+    "harness-error": 4,
     "docs-mcp": 2,
     "SDK": 1
   },
@@ -77,34 +77,6 @@
     },
     {
       "component": "android-ios",
-      "issue": "iOS screen infinite-loops / re-initializes \u2014 @StateObject wraps a shared singleton service and a .task with no id re-fires on every re-render ([ios] Maestro assertion failed [chat.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-chat-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "I1",
-      "tier": "runtime",
-      "platform": "ios",
-      "remediation_applied": true,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "The gate-3 iOS chat smoke did not fail inside the app \u2014 it failed at Maestro `launchApp` because the flow targeted a bundle id that is not installed. The rendered flow (smoke/flows/logistics/ios/chat.yaml -> executed _reports/.../ios/ios/chat.yaml line 5) uses `appId: com.northwind.northwind_dispatch`, taken from the single shared `smoke.app_package` in config/use_cases/05-logistics.yaml:47. But the built iOS app's CFBundleIdentifier is `com.northwind.northwindDispatch` (ios/Runner.xcodeproj/project.pbxproj:513 / built Runner.app Info.plist). Reproduced directly: `xcrun simctl launch <udid> com.northwind.northwind_dispatch` => FBSOpenApplicationServiceErrorDomain code=4 (the exact 1s 'Unknown error' + status=ERROR in chat.yaml.junit.xml, app bundle id absent from ios_unified_log.txt), while `...northwindDispatch` launches to a stable PID 40816 with no crash/relaunch loop. Android runs the identical stub flow and PASSES because its applicationId (android/app/build.gradle.kts:20) is snake_case `com.northwind.northwind_dispatch`. The harness even records the correct iOS id at interop.platforms.ios.app_package (05-logistics.yaml:72) but the smoke section applies one shared app_package to both platforms; Flutter's own scaffolding camelCases the iOS bundle id while keeping Android snake_case, so a single value cannot be right for both. The I1 cluster label (@StateObject/.task SwiftUI re-init loop) is a misattribution: this is a Flutter app with no SwiftUI.",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "xcrun simctl install + launch on booted iPhone 17 Pro (5C6BDEC6...): launch com.northwind.northwind_dispatch => FBSOpenApplicationServiceErrorDomain code=4 (reproduces the 1s failure); launch com.northwind.northwindDispatch => PID 40816, stable after 2s (app healthy). Android chat.yaml.out.log => Passed.",
-          "result": "red"
-        },
-        "registry_draft": "",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I1.dossier.yaml"
-      },
-      "pending_checkpoint_review": true,
-      "retracted": true,
-      "retraction_reason": "MISDIAGNOSIS \u2014 the stated mechanism cannot apply to this app. The finding blames SwiftUI `@StateObject` wrapping a singleton and a `.task` without an id re-firing, but logistics mobile is a FLUTTER app (Dart); it contains no SwiftUI, no @StateObject and no .task. The observed iOS symptom was traced to a stale simulator build: `flutter build ios` silently reinstalled the PREVIOUS Runner.app when ios/Flutter/ephemeral was read-only, so the app ran with the wrong API_BASE_URL and could not reach the backend. Retracted as an app/skills defect; the real issue is the build/harness trap already recorded separately.",
-      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
-    },
-    {
-      "component": "android-ios",
       "issue": "iOS ghost call \u2014 the UI Kit's ongoing-call screen is not dismissed when the remote party ends a 1:1 call; the local user is stuck in a conference-of-one with the timer running until they manually hang up ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
       "tag": "skills",
       "auto_caught": true,
@@ -116,34 +88,6 @@
     },
     {
       "component": "android-ios",
-      "issue": "iOS: only the first call per app launch connects \u2014 after any completed call, the next accepted call never transitions to the ongoing screen (sticks at Calling / silently drops); kit-internal state breaks and only a full app restart recovers ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
-      "tag": "harness-error",
-      "auto_caught": true,
-      "issue_id": "I5",
-      "tier": "runtime",
-      "platform": "ios",
-      "remediation_applied": false,
-      "remediation_worked": false,
-      "debug_agent": {
-        "verdict": "harness_bug",
-        "confidence": "high",
-        "root_cause": "The iOS Maestro smoke flows launch via `appId: {{app_package}}`, and the harness use-case config (config/use_cases/05-logistics.yaml) sets a single `app_package: com.northwind.northwind_dispatch` used verbatim for both platforms. But `flutter create` generates the iOS bundle id by stripping underscores and camelCasing, so the built/installed iOS app's CFBundleIdentifier is `com.northwind.northwindDispatch` (confirmed in build/ios/iphonesimulator/Runner.app/Info.plist and ios/Runner.xcodeproj/project.pbxproj:513; present since Phase A commit cb5a03b, i.e. pre-CometChat). Maestro's `launchApp` on iOS therefore targets an uninstalled bundle id and fails immediately \u2014 reproduced directly on the same booted sim (5C6BDEC6...): `simctl launch com.northwind.northwind_dispatch` \u2192 FBSOpenApplicationServiceErrorDomain code=4, while `simctl launch com.northwind.northwindDispatch` succeeds (PID 41359). This is why BOTH iOS flows (chat.yaml AND calling.yaml) fail identically with 'Unknown error / Failed (1s)' and the app never appears in ios_unified_log.txt, while Android (applicationId keeps the underscore, matching) passes. The I5 'second call breaks' fingerprint is a misattribution: a pre-launch, pre-call harness bundle-id mismatch, not a calling regression.",
-        "used_reference_impl": false,
-        "debug_agent_fixed": false,
-        "verification": {
-          "reran": "xcrun simctl launch 5C6BDEC6-777C-4F7B-A6AC-1633AB65C9F4 com.northwind.northwind_dispatch (Maestro appId) vs com.northwind.northwindDispatch (built bundle id)",
-          "result": "red"
-        },
-        "registry_draft": "",
-        "dossier": "/Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/debug_I5.dossier.yaml"
-      },
-      "pending_checkpoint_review": true,
-      "retracted": true,
-      "retraction_reason": "CONTRADICTED BY LATER EVIDENCE \u2014 'only the first call per app launch connects; only a full app restart recovers' does not reproduce. At CP2 the operator ran the full manual two-device matrix and 1:1 calls MULTIPLE (a second call placed after the first ends) passed on all three pairs (web-android, android-ios, ios-web), 18/18. A live android<->iOS second call was also observed connecting in-session (accepted -> onParticipantJoined -> onSessionJoined) with no app restart. Retracted on own-evidence contradiction.",
-      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
-    },
-    {
-      "component": "android-ios",
       "issue": "ios smoke drove the pre-installed app \u2014 the built sim app is --no-codesign (I9: keychain -34018 breaks CometChat login), so it is NOT auto-installed and freshness is UNVERIFIED ([ios] /Users/admin/Desktop/Allapplications/logistics/mobile/build/ios/iphonesimulator/Runner.app)",
       "tag": "harness-error",
       "auto_caught": true,
@@ -152,32 +96,6 @@
       "platform": "ios",
       "remediation_applied": false,
       "remediation_worked": false
-    },
-    {
-      "component": "android-ios",
-      "issue": "Visual defect: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/calling.yaml.png: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present | judge quoted: '\"Northwind Dispatch\", \"Sign in\", \"DEMO ACCOUNTS\", \"Tap a role to sign in \u2014 shared password \\\\\"password\\\\\".\"')",
-      "tag": "skills",
-      "auto_caught": true,
-      "issue_id": "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
-      "tier": "runtime",
-      "remediation_applied": false,
-      "remediation_worked": false,
-      "retracted": true,
-      "retraction_reason": "MISATTRIBUTION \u2014 caused by an UNAUTHORED smoke flow, not the app. As established by the harness-error blockers in this same report, smoke/flows/logistics/{android,ios}/calling.yaml contains only `launchApp: {clearState: true}`; clearState wipes the app to the login screen and the flow ends without signing in or navigating, so the screenshot judge necessarily saw a login screen. The flow measured nothing about the skills under review. Retracted as a skills finding; the harness gap remains recorded.",
-      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
-    },
-    {
-      "component": "android-ios",
-      "issue": "Visual defect: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/chat.yaml.png: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation | judge quoted: '\"Route Board\", \"rte-001\", \"2026-07-20 \u00b7 driver usr-driver\", \"Planned\", \"2 stops\"')",
-      "tag": "skills",
-      "auto_caught": true,
-      "issue_id": "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s",
-      "tier": "runtime",
-      "remediation_applied": false,
-      "remediation_worked": false,
-      "retracted": true,
-      "retraction_reason": "MISATTRIBUTION \u2014 same unauthored-stub cause as above (chat.yaml is `launchApp` only). The same stub yielded login, 'Route Board' and a blank frame across runs, which is dispositive that the FLOW, not the app, controlled the screen. The app wires a Chats tab on every role opening the real CometChatConversations UI Kit. Retracted as a skills finding; the harness gap remains recorded.",
-      "retracted_by": "CP2 reconciliation (operator-verified matrix + code inspection)"
     },
     {
       "component": "android-ios",
@@ -232,7 +150,44 @@
       "pending_checkpoint_review": true
     }
   ],
-  "retracted": [],
+  "retracted": [
+    {
+      "component": "android-ios",
+      "disposition": "retracted-false-positive",
+      "issue": "iOS screen infinite-loops / re-initializes \u2014 @StateObject wraps a shared singleton service and a .task with no id re-fires on every re-render ([ios] Maestro assertion failed [chat.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-chat-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
+      "reason": "MISDIAGNOSIS \u2014 the stated mechanism cannot exist in this app. The finding blames SwiftUI `@StateObject` wrapping a singleton plus a `.task` without an id re-firing, but logistics mobile is a FLUTTER (Dart) app: no SwiftUI, no @StateObject, no .task. The observed iOS symptom traced to a stale simulator build \u2014 `flutter build ios` silently reinstalled the PREVIOUS Runner.app while ios/Flutter/ephemeral was read-only, so the app ran with the wrong API_BASE_URL and could not reach the backend. Not an app/skills defect.",
+      "issue_id": "I1",
+      "original_tag": "harness-error",
+      "retracted_by": "CP2 reconciliation (operator-verified 18/18 matrix + code inspection)"
+    },
+    {
+      "component": "android-ios",
+      "disposition": "retracted-false-positive",
+      "issue": "iOS: only the first call per app launch connects \u2014 after any completed call, the next accepted call never transitions to the ongoing screen (sticks at Calling / silently drops); kit-internal state breaks and only a full app restart recovers ([ios] Maestro assertion failed [calling.yaml] on ios: \nWaiting for flows to complete...\n[Failed] logistics-ios-calling-smoke (1s)\n\n1/1 Flow Failed\n\n\n)",
+      "reason": "CONTRADICTED BY OWN EVIDENCE \u2014 'only the first call per app launch connects; only a full app restart recovers' does not reproduce. At CP2 the operator ran the full manual two-device matrix and 1:1 calls MULTIPLE (a second call placed after the first ends) passed on all three pairs, 18/18. A live android<->iOS second call was separately observed connecting in-session (accepted -> onParticipantJoined -> onSessionJoined) with no app restart.",
+      "issue_id": "I5",
+      "original_tag": "harness-error",
+      "retracted_by": "CP2 reconciliation (operator-verified 18/18 matrix + code inspection)"
+    },
+    {
+      "component": "android-ios",
+      "disposition": "methodology-artifact",
+      "issue": "Visual defect: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/calling.yaml.png: Expected an incoming-call UI, but the screen shows the app's login screen instead \u2014 no call surface is present | judge quoted: '\"Northwind Dispatch\", \"Sign in\", \"DEMO ACCOUNTS\", \"Tap a role to sign in \u2014 shared password \\\\\"password\\\\\".\"')",
+      "reason": "MISATTRIBUTION \u2014 produced by an UNAUTHORED smoke flow, not the app. As the harness-error blockers in this same report establish, smoke/flows/logistics/{android,ios}/calling.yaml contains only `launchApp: {clearState: true}`; clearState wipes the app to the login screen and the flow ends without signing in or navigating, so the judge necessarily saw a login screen. Measures the harness, not the skills under review.",
+      "issue_id": "visual/expected-an-incoming-call-ui-but-the-screen-shows-the-app-s",
+      "original_tag": "skills",
+      "retracted_by": "CP2 reconciliation (operator-verified 18/18 matrix + code inspection)"
+    },
+    {
+      "component": "android-ios",
+      "disposition": "methodology-artifact",
+      "issue": "Visual defect: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation (screenshot /Users/admin/Desktop/orchestrator/cometchat-skills-reviewer/cometchat-skills-reviewer/_reports/2026-07-08-baseline/logistics/android-ios/smoke/android/shots/chat.yaml.png: Expected a chat thread with message bubbles, but the screen shows a route list (Route Board), not a conversation | judge quoted: '\"Route Board\", \"rte-001\", \"2026-07-20 \u00b7 driver usr-driver\", \"Planned\", \"2 stops\"')",
+      "reason": "MISATTRIBUTION \u2014 same unauthored-stub cause (chat.yaml is `launchApp` only). The identical stub yielded a login screen, 'Route Board', and a blank frame across three runs \u2014 dispositive that the FLOW, not the app, controlled the screen. The app wires a Chats tab on every role opening the real CometChatConversations UI Kit.",
+      "issue_id": "visual/expected-a-chat-thread-with-message-bubbles-but-the-screen-s",
+      "original_tag": "skills",
+      "retracted_by": "CP2 reconciliation (operator-verified 18/18 matrix + code inspection)"
+    }
+  ],
   "improvement_suggestions": [
     {
       "component": "backend",
